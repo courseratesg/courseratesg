@@ -62,7 +62,7 @@ resource "aws_amplify_app" "main" {
   custom_rule {
     source = "/api/<*>"
     status = "200"
-    target = "https://${var.domain_name}/api/<*>"
+    target = "https://${aws_lb.main.dns_name}/api/<*>"
   }
 
   environment_variables = {
