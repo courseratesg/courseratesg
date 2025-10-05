@@ -90,7 +90,7 @@ jobs:
         working-directory: infrastructure
 
       - name: tofu plan
-        run: tofu plan -detailed-exitcode -output=tfplan
+        run: tofu plan -detailed-exitcode -out=tfplan
         working-directory: infrastructure
         env:
           TF_VAR_domain_name: courseratesg.xyz

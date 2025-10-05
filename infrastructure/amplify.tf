@@ -21,7 +21,7 @@ resource "aws_iam_role" "amplify" {
 
 resource "aws_iam_role_policy_attachment" "amplify" {
   role       = aws_iam_role.amplify.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmplifyBackendDeployFullAccess"
 }
 
 resource "aws_amplify_app" "main" {
@@ -45,7 +45,7 @@ resource "aws_amplify_app" "main" {
           commands:
             - npm run build
       artifacts:
-        baseDirectory: build
+        baseDirectory: frontend/build
         files:
           - "**/*"
       cache:
