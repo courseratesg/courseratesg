@@ -8,9 +8,9 @@ def health_check():
   return {"status": "ok"}
 
 
-@app.get("/")
+@app.get("/api/v1/ping")
 def root():
-  return {"message": "hello, world\n"}
+  return {"message": "pong"}
 
 
 if __name__ == "__main__":
