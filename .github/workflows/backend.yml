@@ -81,9 +81,6 @@ jobs:
     env:
       AWS_REGION: ap-southeast-1
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
@@ -96,18 +93,10 @@ jobs:
             --task-definition courserate-sg-task \
             --query taskDefinition >task-definition.json
 
-      - name: Update task definition with new image
-        id: task-definition
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: backend
-          image: zhongruoyu/courseratesg-backend:latest
-
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.task-definition.outputs.task-definition }}
+          task-definition: task-definition.json
           service: courserate-sg-service
           cluster: courserate-sg-ecs-cluster
           wait-for-service-stability: true

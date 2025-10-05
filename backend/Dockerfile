@@ -7,6 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src src
 
-EXPOSE 80
-
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "80"]
+CMD [ "sh", "-c", "uvicorn src.app:app --host 0.0.0.0 --port ${PORT:-80}" ]
