@@ -8,8 +8,8 @@ def health_check():
   return {"status": "ok"}
 
 
-@app.get("/api/v1/ping")
-def root():
+@app.get("/v1/ping")
+def ping():
   return {"message": "pong"}
 
 

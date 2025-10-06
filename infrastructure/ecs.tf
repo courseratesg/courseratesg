@@ -254,4 +254,9 @@ resource "aws_ecs_service" "main" {
   deployment_minimum_healthy_percent = 100
 
   enable_execute_command = true
+
+  # Ignore changes to task_definition since it's managed by CI/CD pipeline
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
