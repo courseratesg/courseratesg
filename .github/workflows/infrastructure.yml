@@ -42,7 +42,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: tofu fmt
-        run: tofu fmt -check -recursive
+        run: tofu fmt -check -diff
         working-directory: ./infrastructure
 
       - name: tofu init
