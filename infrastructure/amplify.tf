@@ -59,14 +59,8 @@ resource "aws_amplify_app" "main" {
     target = "/index.html"
   }
 
-  custom_rule {
-    source = "/api/<*>"
-    status = "200"
-    target = "https://${aws_lb.main.dns_name}/api/<*>"
-  }
-
   environment_variables = {
-    REACT_APP_API_URL              = "https://${var.domain_name}/api"
+    REACT_APP_API_URL              = "https://api.${var.domain_name}"
     REACT_APP_COGNITO_REGION       = var.aws_region
     REACT_APP_COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
     REACT_APP_COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.main.id
@@ -92,7 +86,7 @@ resource "aws_amplify_domain_association" "main" {
 
   certificate_settings {
     type                   = "CUSTOM"
-    custom_certificate_arn = aws_acm_certificate.main_amplify.arn
+    custom_certificate_arn = aws_acm_certificate.www.arn
   }
 
   sub_domain {
