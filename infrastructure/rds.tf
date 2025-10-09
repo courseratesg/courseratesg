@@ -54,13 +54,12 @@ resource "aws_db_instance" "main" {
 
   identifier = "${var.project_name}-rds"
 
-  engine                = "postgres"
-  engine_version        = "17.6"
-  instance_class        = "db.t4g.micro"
-  allocated_storage     = 20
-  storage_type          = "gp3"
-  storage_encrypted     = true
-  max_allocated_storage = 100
+  engine            = "postgres"
+  engine_version    = "17.6"
+  instance_class    = "db.t4g.micro"
+  allocated_storage = 20
+  storage_type      = "gp3"
+  storage_encrypted = true
 
   db_name  = var.db_name
   username = var.db_username
@@ -68,26 +67,25 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.sg_rds.id]
+  publicly_accessible    = false
 
-  multi_az                = true
-  publicly_accessible     = false
-  backup_retention_period = 7
-  backup_window           = "20:00-21:00"
-  maintenance_window      = "sun:21:00-sun:22:00"
+  # The following settings are applied mainly to save costs.
+  # Ideally, multi-AZ and backups should be enabled for production.
+  multi_az                = false
+  backup_retention_period = 0
 
   enabled_cloudwatch_logs_exports = [
     "postgresql",
     "upgrade",
   ]
-
-  auto_minor_version_upgrade   = true
-  deletion_protection          = false
-  skip_final_snapshot          = false
-  final_snapshot_identifier    = "${var.db_name}-rds-final-snapshot"
-  copy_tags_to_snapshot        = true
-  performance_insights_enabled = true
-
   parameter_group_name = aws_db_parameter_group.main.name
+
+  maintenance_window         = "sun:21:00-sun:22:00"
+  auto_minor_version_upgrade = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "${var.db_name}-rds-final-snapshot"
+  copy_tags_to_snapshot     = true
 }
 
 resource "aws_db_parameter_group" "main" {
