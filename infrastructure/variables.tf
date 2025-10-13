@@ -10,10 +10,11 @@ variable "aws_region" {
   default     = "ap-southeast-1" # Singapore
 }
 
+# Number of AZs is reduced to 1 to save costs.
 variable "az_count" {
   description = "Number of availability zones to use"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "domain_name" {
