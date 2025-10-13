@@ -126,7 +126,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 locals {
   ecs_task_cpu      = 256
   ecs_task_memory   = 512
-  ecs_desired_count = 2
+  ecs_desired_count = 1
 }
 
 resource "aws_ecs_task_definition" "main" {
