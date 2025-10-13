@@ -40,11 +40,6 @@ resource "aws_ecs_cluster" "main" {
   }
 
   name = "${var.project_name}-ecs-cluster"
-
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
 }
 
 resource "aws_iam_role" "ecs_task_execution" {
@@ -126,7 +121,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 locals {
   ecs_task_cpu      = 256
   ecs_task_memory   = 512
-  ecs_desired_count = 2
+  ecs_desired_count = 1
 }
 
 resource "aws_ecs_task_definition" "main" {
