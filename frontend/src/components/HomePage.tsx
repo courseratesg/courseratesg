@@ -1,0 +1,332 @@
+import React, { useState } from 'react';
+import { Search, User, BookOpen, Star, TrendingUp } from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { 
+  searchProfessors, 
+  searchCourses, 
+  getProfessorStats, 
+  getCourseStats 
+} from '../services/api';
+
+interface HomePageProps {
+  onProfessorClick: (professorName: string) => void;
+  onCourseClick: (courseCode: string, universityName: string) => void;
+}
+
+// Professor Result Card Component
+function ProfessorResultCard({ professor, onClick }: { professor: string; onClick: () => void }) {
+  const [stats, setStats] = React.useState({ averageTeaching: 0, averageDifficulty: 0, totalReviews: 0 });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const loadStats = async () => {
+      const result = await getProfessorStats(professor);
+      setStats(result);
+      setLoading(false);
+    };
+    loadStats();
+  }, [professor]);
+
+  if (loading) {
+    return (
+      <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle>Loading...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={onClick}
+    >
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-blue-600" />
+              <span>{professor}</span>
+            </CardTitle>
+            <CardDescription>Professor Profile</CardDescription>
+          </div>
+          <Badge variant="secondary">{stats.totalReviews} reviews</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center space-x-2">
+            <Star className="h-4 w-4 text-yellow-500" />
+            <span>Teaching: {stats.averageTeaching.toFixed(1)}/5</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-4 w-4 text-red-500" />
+            <span>Difficulty: {stats.averageDifficulty.toFixed(1)}/5</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Course Result Card Component
+function CourseResultCard({ course, onClick }: { course: { code: string; name: string; university: string }; onClick: () => void }) {
+  const [stats, setStats] = React.useState({ averageDifficulty: 0, averageWorkload: 0, totalReviews: 0 });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const loadStats = async () => {
+      const result = await getCourseStats(course.code, course.university);
+      setStats(result);
+      setLoading(false);
+    };
+    loadStats();
+  }, [course.code, course.university]);
+
+  if (loading) {
+    return (
+      <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle>Loading...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={onClick}
+    >
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center space-x-2">
+              <BookOpen className="h-5 w-5 text-green-600" />
+              <span>{course.code}</span>
+            </CardTitle>
+            <CardDescription>{course.name}</CardDescription>
+            <CardDescription className="text-xs">{course.university}</CardDescription>
+          </div>
+          <Badge variant="secondary">{stats.totalReviews} reviews</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-4 w-4 text-red-500" />
+            <span>Difficulty: {stats.averageDifficulty.toFixed(1)}/5</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <BookOpen className="h-4 w-4 text-orange-500" />
+            <span>Workload: {stats.averageWorkload.toFixed(1)}/5</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function HomePage({ onProfessorClick, onCourseClick }: HomePageProps) {
+  const [searchType, setSearchType] = useState<'professor' | 'course'>('professor');
+  const [query, setQuery] = useState('');
+  const [professorResults, setProfessorResults] = useState<string[]>([]);
+  const [courseResults, setCourseResults] = useState<Array<{code: string, university: string, name: string}>>([]);
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+
+    if (searchType === 'professor') {
+      const results = await searchProfessors(query);
+      setProfessorResults(results);
+      setCourseResults([]);
+    } else {
+      const results = await searchCourses(query);
+      setCourseResults(results);
+      setProfessorResults([]);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="text-center">
+        <h1 className="text-4xl mb-4 text-gray-900">Find and Review Professors & Courses</h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Search for professors and courses, read anonymous reviews, and share your own experiences 
+          to help fellow students make informed decisions.
+        </p>
+      </div>
+
+      {/* Search Section */}
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Search className="h-5 w-5" />
+            <span>Search Database</span>
+          </CardTitle>
+          <CardDescription>
+            Find professors with fuzzy search or courses with exact course codes
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Search Type Toggle */}
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setSearchType('professor')}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
+                searchType === 'professor' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <User className="h-4 w-4" />
+              <span>Search Professors</span>
+            </button>
+            <button
+              onClick={() => setSearchType('course')}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
+                searchType === 'course' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Search Courses</span>
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="flex space-x-2">
+            <Input
+              placeholder={
+                searchType === 'professor' 
+                  ? 'Enter professor name (e.g., "Sarah Johnson" or "Johnson")' 
+                  : 'Enter exact course code (e.g., "CS101", "MATH220")'
+              }
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="flex-1"
+            />
+            <Button onClick={handleSearch}>
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+          </div>
+
+          <div className="text-sm text-gray-500">
+            {searchType === 'professor' && (
+              <p>💡 Professor search uses fuzzy matching - try partial names or variations</p>
+            )}
+            {searchType === 'course' && (
+              <p>💡 Course search requires exact course code matching</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results Section */}
+      {(professorResults.length > 0 || courseResults.length > 0) && (
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl mb-6 text-gray-900">
+            Search Results ({professorResults.length + courseResults.length} found)
+          </h2>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Professor Results */}
+            {professorResults.map((professor, index) => (
+              <ProfessorResultCard 
+                key={index}
+                professor={professor}
+                onClick={() => onProfessorClick(professor)}
+              />
+            ))}
+
+            {/* Course Results */}
+            {courseResults.map((course, index) => (
+              <CourseResultCard
+                key={index}
+                course={course}
+                onClick={() => onCourseClick(course.code, course.university)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No Results */}
+      {query && professorResults.length === 0 && courseResults.length === 0 && (
+        <div className="text-center py-8">
+          <div className="text-gray-400 mb-4">
+            <Search className="h-12 w-12 mx-auto" />
+          </div>
+          <h3 className="text-lg text-gray-600 mb-2">No results found</h3>
+          <p className="text-gray-500">
+            {searchType === 'professor' 
+              ? 'Try a different professor name or check the spelling'
+              : 'Make sure you entered the exact course code'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* Getting Started */}
+      {!query && (
+        <div className="max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Search className="h-5 w-5 text-blue-600" />
+                  <span>How to Search</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="font-medium text-gray-700">Professor Search</p>
+                  <p className="text-sm text-gray-600">
+                    Use fuzzy matching to find professors by name. Try partial names, variations, or misspellings.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700">Course Search</p>
+                  <p className="text-sm text-gray-600">
+                    Enter the exact course code to find all sections across universities.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  <span>Anonymous Reviews</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 mb-4">
+                  All reviews are completely anonymous. Share your honest experiences to help other students.
+                </p>
+                <Button variant="outline" className="w-full">
+                  Submit Your First Review
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
