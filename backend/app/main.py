@@ -5,31 +5,35 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import router
+from app.api.v1.depends.settings import get_app_settings
+from app.api.v1.router import api_router
 
 # Run the application
 # poetry run uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 
 app = FastAPI(
-    title="CS5224 Backend Service",
-    description="FastAPI backend service for CS5224 Cloud Computing project",
+    title="CourseRate SG Backend",
+    description="FastAPI backend service",
     version="0.1.0",
 )
 
-# Configure middleware
+# Configure CORS middleware
+settings = get_app_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(router, prefix="/api/v1")
 
-
+# Health check endpoint
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+
+# Include API router
+app.include_router(api_router, prefix=f"{settings.api_prefix}/{settings.api_version}")
