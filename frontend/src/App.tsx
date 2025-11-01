@@ -80,7 +80,7 @@ function App() {
 
   // Show login page when navigating to login
   if (!currentUser && currentPage === 'login') {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} onNavigateHome={() => navigateToPage('home')} />;
   }
 
   return (
@@ -202,6 +202,8 @@ function App() {
           <HomePage
             onProfessorClick={navigateToProfessor}
             onCourseClick={navigateToCourse}
+            currentUser={currentUser}
+            onNavigate={navigateToPage}
           />
         )}
         {currentPage === 'submit-review' && currentUser && <SubmitReviewPage currentUser={currentUser} />}

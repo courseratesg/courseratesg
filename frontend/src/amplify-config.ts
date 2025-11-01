@@ -1,40 +1,25 @@
-// AWS Amplify Configuration with Mock Data
-// This configuration uses mock credentials for development
-// Replace with real AWS credentials when deploying
+// AWS Amplify Configuration for Cognito
+// Set environment variables for your Cognito User Pool:
+// VITE_AWS_REGION
+// VITE_AWS_USER_POOL_ID
+// VITE_AWS_USER_POOL_CLIENT_ID
+// VITE_AWS_IDENTITY_POOL_ID (optional)
 
 export const amplifyConfig = {
   Auth: {
     Cognito: {
-      // Mock Cognito configuration
-      userPoolId: 'us-east-1_MOCKPOOL',
-      userPoolClientId: 'mock-client-id',
-      identityPoolId: 'us-east-1:mock-identity-pool',
-      region: 'us-east-1',
-      // For mock mode, we'll bypass actual AWS calls
-      mockMode: true,
+      userPoolId: import.meta.env.VITE_AWS_USER_POOL_ID || '',
+      userPoolClientId: import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID || '',
+      ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && {
+        identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
+      }),
+      region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
+      loginWith: {
+        email: true,
+        username: true,
+      },
+      signUpVerificationMethod: 'code' as const,
     },
   },
 };
-
-// Mock users for testing
-export const mockUsers = [
-  {
-    username: 'testuser',
-    password: 'Test123!',
-    attributes: {
-      sub: 'mock-user-1',
-      email: 'test@student.edu',
-      name: 'Test User',
-    },
-  },
-  {
-    username: 'student',
-    password: 'Student123!',
-    attributes: {
-      sub: 'mock-user-2',
-      email: 'student@university.edu',
-      name: 'Jane Student',
-    },
-  },
-];
 

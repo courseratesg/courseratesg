@@ -1,5 +1,5 @@
 // API Service for Backend Endpoints
-// Uses mock data for development - replace with actual API calls when backend is ready
+// Supports both mock data and real API calls via environment variable
 
 import type { Review } from '../App';
 import { mockReviews, mockUniversities, mockProfessors, mockCourses, SEMESTER_OPTIONS } from '../components/mockData';
@@ -7,8 +7,50 @@ import { mockReviews, mockUniversities, mockProfessors, mockCourses, SEMESTER_OP
 // Re-export SEMESTER_OPTIONS so components don't need to import directly from mockData
 export { SEMESTER_OPTIONS };
 
-const API_BASE_URL = '/api/v1';
+// Configuration: Use mock data by default, set VITE_USE_MOCK_API=false to use real API
+const USE_MOCK_API = (import.meta.env.VITE_USE_MOCK_API ?? 'true') !== 'false'; // Defaults to true
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 const MOCK_DELAY = 300; // Simulate network delay
+
+// Helper to get authentication token (defined here to avoid circular dependency)
+async function getAuthTokenForRequest(): Promise<string | null> {
+  try {
+    const { authService } = await import('./auth-service');
+    return await authService.getAuthToken();
+  } catch {
+    return null;
+  }
+}
+
+// Helper to make API requests
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const token = await getAuthTokenForRequest();
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(errorData.message || `API request failed with status ${response.status}`);
+  }
+  
+  return response.json();
+}
 
 // Convert mock data from JSON-like format (with ISO string dates) to Review objects (with Date objects)
 const getMockReviewsAsReviews = (): Review[] => {
@@ -115,12 +157,15 @@ const deleteReviewFromStorage = (reviewId: string): void => {
  * Fuzzy search professors by name
  */
 export async function searchProfessors(query: string): Promise<string[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const lowerQuery = query.toLowerCase();
+    return mockProfessors.filter(professor => 
+      professor.toLowerCase().includes(lowerQuery)
+    );
+  }
   
-  const lowerQuery = query.toLowerCase();
-  return mockProfessors.filter(professor => 
-    professor.toLowerCase().includes(lowerQuery)
-  );
+  return apiRequest<string[]>(`/search/professors?q=${encodeURIComponent(query)}`);
 }
 
 /**
@@ -128,25 +173,28 @@ export async function searchProfessors(query: string): Promise<string[]> {
  * Search courses by code (exact match)
  */
 export async function searchCourses(query: string): Promise<Course[]> {
-  await delay(MOCK_DELAY);
-  
-  const upperQuery = query.toUpperCase();
-  const courses = new Map<string, Course>();
-  
-  mockCourses.forEach(course => {
-    if (course.code.toUpperCase() === upperQuery) {
-      const key = `${course.code}-${course.university}`;
-      if (!courses.has(key)) {
-        courses.set(key, {
-          code: course.code,
-          name: course.name,
-          university: course.university
-        });
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const upperQuery = query.toUpperCase();
+    const courses = new Map<string, Course>();
+    
+    mockCourses.forEach(course => {
+      if (course.code.toUpperCase() === upperQuery) {
+        const key = `${course.code}-${course.university}`;
+        if (!courses.has(key)) {
+          courses.set(key, {
+            code: course.code,
+            name: course.name,
+            university: course.university
+          });
+        }
       }
-    }
-  });
+    });
+    
+    return Array.from(courses.values());
+  }
   
-  return Array.from(courses.values());
+  return apiRequest<Course[]>(`/search/courses?q=${encodeURIComponent(query)}`);
 }
 
 /**
@@ -154,16 +202,19 @@ export async function searchCourses(query: string): Promise<Course[]> {
  * List all professors (for dropdowns)
  */
 export async function getProfessors(): Promise<string[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const allReviews = getAllReviews();
+    const professors = new Set<string>();
+    
+    allReviews.forEach(review => {
+      professors.add(review.professorName);
+    });
+    
+    return Array.from(professors).sort();
+  }
   
-  const allReviews = getAllReviews();
-  const professors = new Set<string>();
-  
-  allReviews.forEach(review => {
-    professors.add(review.professorName);
-  });
-  
-  return Array.from(professors).sort();
+  return apiRequest<string[]>('/professors');
 }
 
 /**
@@ -171,10 +222,12 @@ export async function getProfessors(): Promise<string[]> {
  * List all universities (for dropdowns)
  */
 export async function getUniversities(): Promise<string[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    return [...mockUniversities].sort();
+  }
   
-  // Return mock universities data
-  return [...mockUniversities].sort();
+  return apiRequest<string[]>('/universities');
 }
 
 /**
@@ -182,16 +235,19 @@ export async function getUniversities(): Promise<string[]> {
  * List all course codes (for dropdowns)
  */
 export async function getCourses(): Promise<string[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const allReviews = getAllReviews();
+    const courseCodes = new Set<string>();
+    
+    allReviews.forEach(review => {
+      courseCodes.add(review.courseCode);
+    });
+    
+    return Array.from(courseCodes).sort();
+  }
   
-  const allReviews = getAllReviews();
-  const courseCodes = new Set<string>();
-  
-  allReviews.forEach(review => {
-    courseCodes.add(review.courseCode);
-  });
-  
-  return Array.from(courseCodes).sort();
+  return apiRequest<string[]>('/courses');
 }
 
 // ==================== REVIEWS & STATISTICS ENDPOINTS ====================
@@ -201,12 +257,20 @@ export async function getCourses(): Promise<string[]> {
  * Get reviews by professor name
  */
 export async function getReviewsByProfessor(professorName: string): Promise<Review[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const allReviews = getAllReviews();
+    return allReviews.filter(review => 
+      review.professorName.toLowerCase() === professorName.toLowerCase()
+    );
+  }
   
-  const allReviews = getAllReviews();
-  return allReviews.filter(review => 
-    review.professorName.toLowerCase() === professorName.toLowerCase()
-  );
+  const reviews = await apiRequest<Review[]>(`/reviews?professor=${encodeURIComponent(professorName)}`);
+  // Convert date strings to Date objects
+  return reviews.map(review => ({
+    ...review,
+    createdAt: new Date(review.createdAt)
+  }));
 }
 
 /**
@@ -214,13 +278,23 @@ export async function getReviewsByProfessor(professorName: string): Promise<Revi
  * Get reviews by course + university
  */
 export async function getReviewsByCourse(courseCode: string, university: string): Promise<Review[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const allReviews = getAllReviews();
+    return allReviews.filter(review => 
+      review.courseCode.toLowerCase() === courseCode.toLowerCase() &&
+      review.universityName.toLowerCase() === university.toLowerCase()
+    );
+  }
   
-  const allReviews = getAllReviews();
-  return allReviews.filter(review => 
-    review.courseCode.toLowerCase() === courseCode.toLowerCase() &&
-    review.universityName.toLowerCase() === university.toLowerCase()
+  const reviews = await apiRequest<Review[]>(
+    `/reviews?course=${encodeURIComponent(courseCode)}&university=${encodeURIComponent(university)}`
   );
+  // Convert date strings to Date objects
+  return reviews.map(review => ({
+    ...review,
+    createdAt: new Date(review.createdAt)
+  }));
 }
 
 /**
@@ -228,28 +302,31 @@ export async function getReviewsByCourse(courseCode: string, university: string)
  * Professor stats (avg ratings, count)
  */
 export async function getProfessorStats(name: string): Promise<ProfessorStats> {
-  await delay(MOCK_DELAY);
-  
-  const reviews = await getReviewsByProfessor(name);
-  if (reviews.length === 0) {
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const reviews = await getReviewsByProfessor(name);
+    if (reviews.length === 0) {
+      return {
+        averageTeaching: 0,
+        averageDifficulty: 0,
+        averageWorkload: 0,
+        totalReviews: 0
+      };
+    }
+    
+    const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
+    const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
+    const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
+    
     return {
-      averageTeaching: 0,
-      averageDifficulty: 0,
-      averageWorkload: 0,
-      totalReviews: 0
+      averageTeaching: totalTeaching / reviews.length,
+      averageDifficulty: totalDifficulty / reviews.length,
+      averageWorkload: totalWorkload / reviews.length,
+      totalReviews: reviews.length
     };
   }
   
-  const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
-  const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
-  const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
-  
-  return {
-    averageTeaching: totalTeaching / reviews.length,
-    averageDifficulty: totalDifficulty / reviews.length,
-    averageWorkload: totalWorkload / reviews.length,
-    totalReviews: reviews.length
-  };
+  return apiRequest<ProfessorStats>(`/stats/professor?name=${encodeURIComponent(name)}`);
 }
 
 /**
@@ -257,28 +334,33 @@ export async function getProfessorStats(name: string): Promise<ProfessorStats> {
  * Course stats (avg ratings, count)
  */
 export async function getCourseStats(courseCode: string, university: string): Promise<CourseStats> {
-  await delay(MOCK_DELAY);
-  
-  const reviews = await getReviewsByCourse(courseCode, university);
-  if (reviews.length === 0) {
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const reviews = await getReviewsByCourse(courseCode, university);
+    if (reviews.length === 0) {
+      return {
+        averageDifficulty: 0,
+        averageWorkload: 0,
+        averageTeaching: 0,
+        totalReviews: 0
+      };
+    }
+    
+    const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
+    const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
+    const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
+    
     return {
-      averageDifficulty: 0,
-      averageWorkload: 0,
-      averageTeaching: 0,
-      totalReviews: 0
+      averageDifficulty: totalDifficulty / reviews.length,
+      averageWorkload: totalWorkload / reviews.length,
+      averageTeaching: totalTeaching / reviews.length,
+      totalReviews: reviews.length
     };
   }
   
-  const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
-  const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
-  const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
-  
-  return {
-    averageDifficulty: totalDifficulty / reviews.length,
-    averageWorkload: totalWorkload / reviews.length,
-    averageTeaching: totalTeaching / reviews.length,
-    totalReviews: reviews.length
-  };
+  return apiRequest<CourseStats>(
+    `/stats/course?code=${encodeURIComponent(courseCode)}&university=${encodeURIComponent(university)}`
+  );
 }
 
 // ==================== REVIEW MANAGEMENT (PROTECTED) ====================
@@ -288,28 +370,40 @@ export async function getCourseStats(courseCode: string, university: string): Pr
  * Submit new review
  */
 export async function createReview(payload: CreateReviewPayload, userId: string): Promise<Review> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const newReview: Review = {
+      id: `review-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      courseCode: payload.courseCode.trim().toUpperCase(),
+      courseName: payload.courseName.trim(),
+      yearTaken: payload.yearTaken,
+      semester: payload.semester,
+      professorName: payload.professorName.trim(),
+      universityName: payload.universityName.trim(),
+      teachingRating: payload.teachingRating,
+      difficultyRating: payload.difficultyRating,
+      workloadRating: payload.workloadRating,
+      reviewText: payload.reviewText.trim(),
+      gradeReceived: payload.gradeReceived,
+      gradeExpected: payload.gradeExpected,
+      createdAt: new Date()
+    };
+    
+    saveReview(newReview);
+    return newReview;
+  }
   
-  const newReview: Review = {
-    id: `review-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    userId,
-    courseCode: payload.courseCode.trim().toUpperCase(),
-    courseName: payload.courseName.trim(),
-    yearTaken: payload.yearTaken,
-    semester: payload.semester,
-    professorName: payload.professorName.trim(),
-    universityName: payload.universityName.trim(),
-    teachingRating: payload.teachingRating,
-    difficultyRating: payload.difficultyRating,
-    workloadRating: payload.workloadRating,
-    reviewText: payload.reviewText.trim(),
-    gradeReceived: payload.gradeReceived,
-    gradeExpected: payload.gradeExpected,
-    createdAt: new Date()
+  const review = await apiRequest<Review>('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  
+  // Convert date string to Date object
+  return {
+    ...review,
+    createdAt: new Date(review.createdAt)
   };
-  
-  saveReview(newReview);
-  return newReview;
 }
 
 /**
@@ -317,10 +411,18 @@ export async function createReview(payload: CreateReviewPayload, userId: string)
  * User's own reviews
  */
 export async function getMyReviews(userId: string): Promise<Review[]> {
-  await delay(MOCK_DELAY);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const allReviews = getAllReviews();
+    return allReviews.filter(review => review.userId === userId);
+  }
   
-  const allReviews = getAllReviews();
-  return allReviews.filter(review => review.userId === userId);
+  const reviews = await apiRequest<Review[]>('/reviews/mine');
+  // Convert date strings to Date objects
+  return reviews.map(review => ({
+    ...review,
+    createdAt: new Date(review.createdAt)
+  }));
 }
 
 /**
@@ -331,42 +433,54 @@ export async function updateReview(
   reviewId: string,
   updates: Partial<CreateReviewPayload>
 ): Promise<Review> {
-  await delay(MOCK_DELAY);
-  
-  const savedReviews = localStorage.getItem('userReviews');
-  if (!savedReviews) {
-    throw new Error('Review not found');
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    const savedReviews = localStorage.getItem('userReviews');
+    if (!savedReviews) {
+      throw new Error('Review not found');
+    }
+    
+    const userReviews = JSON.parse(savedReviews);
+    const index = userReviews.findIndex((r: Review) => r.id === reviewId);
+    
+    if (index === -1) {
+      throw new Error('Review not found');
+    }
+    
+    const updatedReview = {
+      ...userReviews[index],
+      ...(updates.courseCode && { courseCode: updates.courseCode.trim().toUpperCase() }),
+      ...(updates.courseName && { courseName: updates.courseName.trim() }),
+      ...(updates.yearTaken && { yearTaken: updates.yearTaken }),
+      ...(updates.semester !== undefined && { semester: updates.semester }),
+      ...(updates.professorName && { professorName: updates.professorName.trim() }),
+      ...(updates.universityName && { universityName: updates.universityName.trim() }),
+      ...(updates.teachingRating && { teachingRating: updates.teachingRating }),
+      ...(updates.difficultyRating && { difficultyRating: updates.difficultyRating }),
+      ...(updates.workloadRating && { workloadRating: updates.workloadRating }),
+      ...(updates.reviewText && { reviewText: updates.reviewText.trim() }),
+      ...(updates.gradeReceived !== undefined && { gradeReceived: updates.gradeReceived }),
+      ...(updates.gradeExpected !== undefined && { gradeExpected: updates.gradeExpected })
+    };
+    
+    userReviews[index] = updatedReview;
+    localStorage.setItem('userReviews', JSON.stringify(userReviews));
+    
+    return {
+      ...updatedReview,
+      createdAt: new Date(updatedReview.createdAt)
+    };
   }
   
-  const userReviews = JSON.parse(savedReviews);
-  const index = userReviews.findIndex((r: Review) => r.id === reviewId);
+  const review = await apiRequest<Review>(`/reviews/${reviewId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
   
-  if (index === -1) {
-    throw new Error('Review not found');
-  }
-  
-  const updatedReview = {
-    ...userReviews[index],
-    ...(updates.courseCode && { courseCode: updates.courseCode.trim().toUpperCase() }),
-    ...(updates.courseName && { courseName: updates.courseName.trim() }),
-    ...(updates.yearTaken && { yearTaken: updates.yearTaken }),
-    ...(updates.semester !== undefined && { semester: updates.semester }),
-    ...(updates.professorName && { professorName: updates.professorName.trim() }),
-    ...(updates.universityName && { universityName: updates.universityName.trim() }),
-    ...(updates.teachingRating && { teachingRating: updates.teachingRating }),
-    ...(updates.difficultyRating && { difficultyRating: updates.difficultyRating }),
-    ...(updates.workloadRating && { workloadRating: updates.workloadRating }),
-    ...(updates.reviewText && { reviewText: updates.reviewText.trim() }),
-    ...(updates.gradeReceived !== undefined && { gradeReceived: updates.gradeReceived }),
-    ...(updates.gradeExpected !== undefined && { gradeExpected: updates.gradeExpected })
-  };
-  
-  userReviews[index] = updatedReview;
-  localStorage.setItem('userReviews', JSON.stringify(userReviews));
-  
+  // Convert date string to Date object
   return {
-    ...updatedReview,
-    createdAt: new Date(updatedReview.createdAt)
+    ...review,
+    createdAt: new Date(review.createdAt)
   };
 }
 
@@ -375,13 +489,23 @@ export async function updateReview(
  * Delete own review
  */
 export async function deleteReview(reviewId: string): Promise<void> {
-  await delay(MOCK_DELAY);
-  deleteReviewFromStorage(reviewId);
+  if (USE_MOCK_API) {
+    await delay(MOCK_DELAY);
+    deleteReviewFromStorage(reviewId);
+    return;
+  }
+  
+  await apiRequest<void>(`/reviews/${reviewId}`, {
+    method: 'DELETE',
+  });
 }
 
-// Export a helper to check authentication (for protected endpoints)
-export function getAuthToken(): string | null {
-  return localStorage.getItem('amplifySession') || null;
+// Export a helper to get authentication token (for protected endpoints)
+// This will be used when making actual API calls
+export async function getAuthToken(): Promise<string | null> {
+  // Import dynamically to avoid circular dependencies
+  const { authService } = await import('./auth-service');
+  return await authService.getAuthToken();
 }
 
 // ==================== UTILITY FUNCTIONS ====================
