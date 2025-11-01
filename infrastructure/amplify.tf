@@ -41,6 +41,7 @@ resource "aws_amplify_app" "main" {
         preBuild:
           commands:
             - cd frontend
+            - npm install
         build:
           commands:
             - npm run build
