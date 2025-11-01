@@ -22,6 +22,7 @@ RUN poetry install --only main --no-root
 
 # Copy application code
 COPY app app
+COPY README.md .
 
 # Install the project
 RUN poetry install --only main
