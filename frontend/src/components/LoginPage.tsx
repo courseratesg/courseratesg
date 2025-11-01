@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GraduationCap, AlertCircle } from 'lucide-react';
+import { GraduationCap, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -10,9 +10,10 @@ import { authService } from '../services/auth-service';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
+  onNavigateHome?: () => void;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,16 +58,23 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       );
 
       if (result.success) {
-        // After successful sign up, automatically sign in
-        const signInResult = await authService.signIn(signUpUsername, signUpPassword);
-        if (signInResult.isSignedIn && signInResult.user) {
-          onLogin(signInResult.user);
+        if (result.confirmationRequired) {
+          // Email confirmation required
+          setError('Please check your email for a verification code to complete sign up.');
+        } else {
+          // Auto-confirmed, sign in automatically
+          const signInResult = await authService.signIn(signUpUsername, signUpPassword);
+          if (signInResult.isSignedIn && signInResult.user) {
+            onLogin(signInResult.user);
+          } else {
+            setError('Account created but sign in failed. Please try signing in manually.');
+          }
         }
       } else {
         setError(result.error?.message || 'Failed to sign up');
       }
-    } catch (err) {
-      setError('An unexpected error occurred');
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -76,6 +84,19 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          {onNavigateHome && (
+            <div className="flex justify-start mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onNavigateHome}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </div>
+          )}
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <GraduationCap className="h-8 w-8 text-white" />
@@ -85,7 +106,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <CardDescription>
             {showSignUp
               ? 'Create an account to submit and manage course reviews'
-              : 'Sign in with AWS Amplify to submit and manage course reviews'}
+              : 'Sign in to submit and manage course reviews'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -128,17 +149,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign In with AWS Amplify'}
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
-              <div className="text-center text-sm text-gray-600 mt-4">
-                <p>Test credentials:</p>
-                <p className="text-xs mt-1">
-                  Username: <strong>testuser</strong> / Password: <strong>Test123!</strong>
-                </p>
-                <p className="text-xs">
-                  Username: <strong>student</strong> / Password: <strong>Student123!</strong>
-                </p>
-              </div>
               <div className="text-center mt-4">
                 <button
                   type="button"
@@ -205,7 +217,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing up...' : 'Sign Up with AWS Amplify'}
+                {isLoading ? 'Signing up...' : 'Sign Up'}
               </Button>
               <div className="text-center mt-4">
                 <button

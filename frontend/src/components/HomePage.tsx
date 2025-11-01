@@ -14,6 +14,8 @@ import {
 interface HomePageProps {
   onProfessorClick: (professorName: string) => void;
   onCourseClick: (courseCode: string, universityName: string) => void;
+  currentUser?: { id: string; name: string; email: string } | null;
+  onNavigate?: (page: 'submit-review' | 'login') => void;
 }
 
 // Professor Result Card Component
@@ -131,7 +133,7 @@ function CourseResultCard({ course, onClick }: { course: { code: string; name: s
   );
 }
 
-export function HomePage({ onProfessorClick, onCourseClick }: HomePageProps) {
+export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavigate }: HomePageProps) {
   const [searchType, setSearchType] = useState<'professor' | 'course'>('professor');
   const [query, setQuery] = useState('');
   const [professorResults, setProfessorResults] = useState<string[]>([]);
@@ -319,7 +321,19 @@ export function HomePage({ onProfessorClick, onCourseClick }: HomePageProps) {
                 <p className="text-gray-600 mb-4">
                   All reviews are completely anonymous. Share your honest experiences to help other students.
                 </p>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    if (onNavigate) {
+                      if (currentUser) {
+                        onNavigate('submit-review');
+                      } else {
+                        onNavigate('login');
+                      }
+                    }
+                  }}
+                >
                   Submit Your First Review
                 </Button>
               </CardContent>
