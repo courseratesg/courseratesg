@@ -7,7 +7,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 
-@router.get("/v1/ping")
+@router.get("/ping")
 def ping():
     """Ping endpoint to test API availability."""
     return {"message": "pong", "timestamp": datetime.now().isoformat()}
