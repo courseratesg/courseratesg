@@ -21,9 +21,9 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --only main --no-root
 
 # Copy application code
-COPY src src
+COPY app app
 
 # Install the project
 RUN poetry install --only main
 
-CMD [ "sh", "-c", "poetry run uvicorn src.app:app --host 0.0.0.0 --port ${PORT:-80}" ]
+CMD [ "sh", "-c", "poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-80}" ]
