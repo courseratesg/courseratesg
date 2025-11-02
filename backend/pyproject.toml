@@ -33,9 +33,11 @@ line-length = 120
 [tool.mypy]
 exclude = []
 ignore_missing_imports = true
-install_types = true
 explicit_package_bases = true
 packages = ["app"]
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
