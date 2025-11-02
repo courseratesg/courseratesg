@@ -54,10 +54,10 @@ def get_my_reviews(
 # TODO: fuzzy search
 @router.get("/stats")
 def get_review_stats(
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
     professor_name: Annotated[str | None, Query(description="Filter by professor name")] = None,
     course_code: Annotated[str | None, Query(description="Filter by course code")] = None,
     university: Annotated[str | None, Query(description="Filter by university")] = None,
-    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)] = ...,
 ) -> Any:
     """
     Get aggregated review statistics.
@@ -86,12 +86,12 @@ def get_review_stats(
 # TODO: fuzzy search
 @router.get("/", response_model=list[review_schema.Review])
 def list_reviews(
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
     professor_name: Annotated[str | None, Query(description="Filter by professor name")] = None,
     course_code: Annotated[str | None, Query(description="Filter by course code")] = None,
     university: Annotated[str | None, Query(description="Filter by university")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
-    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)] = ...,
 ) -> Any:
     """
     Retrieve reviews with optional filtering.
@@ -128,7 +128,7 @@ def list_reviews(
 @router.get("/{review_id}", response_model=review_schema.Review)
 def get_review(
     review_id: Annotated[int, Path(description="Review ID", gt=0)],
-    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)] = ...,
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Get a specific review by ID.
@@ -156,7 +156,7 @@ def get_review(
 def update_review(
     review_id: Annotated[int, Path(description="Review ID", gt=0)],
     review_in: review_schema.ReviewUpdate,
-    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)] = ...,
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Update a review.
@@ -184,7 +184,7 @@ def update_review(
 @router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(
     review_id: Annotated[int, Path(description="Review ID", gt=0)],
-    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)] = ...,
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> None:
     """
     Delete a review.
