@@ -12,6 +12,7 @@ router = APIRouter(prefix="/courses", tags=["courses"])
 
 # TODO: create course for admin
 
+
 @router.get("/", response_model=list[Course])
 def list_courses(
     course_storage: Annotated[CourseStorage, Depends(get_course_storage)],

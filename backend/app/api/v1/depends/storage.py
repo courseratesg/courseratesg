@@ -20,6 +20,7 @@ def get_data_store() -> DataStore:
 
 # TODO: refactor to dependency injection to get data_store
 
+
 @lru_cache(maxsize=1)
 def get_review_storage() -> ReviewStorage:
     """Get ReviewStorage instance (singleton)."""

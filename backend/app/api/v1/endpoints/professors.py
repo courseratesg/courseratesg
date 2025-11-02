@@ -12,6 +12,7 @@ router = APIRouter(prefix="/professors", tags=["professors"])
 
 # TODO: create professor for admin
 
+
 @router.get("/", response_model=list[Professor])
 def list_professors(
     professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
