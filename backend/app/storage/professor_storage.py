@@ -1,4 +1,6 @@
-"""In-memory storage for professors."""
+"""Professor storage implementation."""
+
+from typing import Optional
 
 from app.schemas.professor import Professor
 from app.storage.data_store import DataStore
@@ -19,7 +21,7 @@ class ProfessorStorage:
     def list_professors(
         self,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Professor]:

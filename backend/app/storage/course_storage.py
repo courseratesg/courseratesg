@@ -1,4 +1,6 @@
-"""In-memory storage for courses."""
+"""Course storage implementation."""
+
+from typing import Optional
 
 from app.schemas.course import Course
 from app.storage.data_store import DataStore
@@ -19,8 +21,8 @@ class CourseStorage:
     def list_courses(
         self,
         *,
-        code: str | None = None,
-        university: str | None = None,
+        code: Optional[str] = None,
+        university: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Course]:

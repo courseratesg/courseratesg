@@ -1,6 +1,6 @@
 """Review endpoints."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
@@ -55,9 +55,9 @@ def get_my_reviews(
 @router.get("/stats")
 def get_review_stats(
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
-    professor_name: Annotated[str | None, Query(description="Filter by professor name")] = None,
-    course_code: Annotated[str | None, Query(description="Filter by course code")] = None,
-    university: Annotated[str | None, Query(description="Filter by university")] = None,
+    professor_name: Annotated[Optional[str], Query(description="Filter by professor name")] = None,
+    course_code: Annotated[Optional[str], Query(description="Filter by course code")] = None,
+    university: Annotated[Optional[str], Query(description="Filter by university")] = None,
 ) -> Any:
     """
     Get aggregated review statistics.
@@ -87,9 +87,9 @@ def get_review_stats(
 @router.get("/", response_model=list[review_schema.Review])
 def list_reviews(
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
-    professor_name: Annotated[str | None, Query(description="Filter by professor name")] = None,
-    course_code: Annotated[str | None, Query(description="Filter by course code")] = None,
-    university: Annotated[str | None, Query(description="Filter by university")] = None,
+    professor_name: Annotated[Optional[str], Query(description="Filter by professor name")] = None,
+    course_code: Annotated[Optional[str], Query(description="Filter by course code")] = None,
+    university: Annotated[Optional[str], Query(description="Filter by university")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
