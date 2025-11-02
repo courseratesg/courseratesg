@@ -1,6 +1,6 @@
 """Course endpoints."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
@@ -18,8 +18,14 @@ router = APIRouter(prefix="/courses", tags=["courses"])
 @router.get("/", response_model=list[Course])
 def list_courses(
     course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
-    code: Annotated[Optional[str], Query(description="Filter by course code (case-insensitive partial match)")] = None,
-    university: Annotated[Optional[str], Query(description="Filter by university (case-insensitive exact match)")] = None,
+    code: Annotated[
+        str | None, 
+        Query(description="Filter by course code (case-insensitive partial match)")
+    ] = None,
+    university: Annotated[
+        str | None, 
+        Query(description="Filter by university (case-insensitive exact match)")
+    ] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
@@ -254,7 +260,10 @@ def get_course_professors(
                 if r.professor_name and r.professor_name.lower() == prof_name.lower()
             ]
             
-            avg_rating = sum(r.overall_rating for r in prof_course_reviews) / len(prof_course_reviews) if prof_course_reviews else 0
+            avg_rating = (
+                sum(r.overall_rating for r in prof_course_reviews) / len(prof_course_reviews) 
+                if prof_course_reviews else 0
+            )
             
             professors_info.append({
                 "id": professor.id,

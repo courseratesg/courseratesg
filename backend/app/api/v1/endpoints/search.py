@@ -1,6 +1,6 @@
 """Search endpoints."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 

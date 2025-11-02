@@ -1,6 +1,6 @@
 """Professor endpoints."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
@@ -18,7 +18,10 @@ router = APIRouter(prefix="/professors", tags=["professors"])
 @router.get("/", response_model=list[Professor])
 def list_professors(
     professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
-    name: Annotated[Optional[str], Query(description="Filter by professor name (case-insensitive partial match)")] = None,
+    name: Annotated[
+        str | None, 
+        Query(description="Filter by professor name (case-insensitive partial match)")
+    ] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
