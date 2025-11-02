@@ -30,6 +30,13 @@ bandit = "^1.8.6"
 [tool.ruff]
 line-length = 120
 
+[tool.mypy]
+exclude = []
+ignore_missing_imports = true
+install_types = true
+explicit_package_bases = true
+packages = ["app"]
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
