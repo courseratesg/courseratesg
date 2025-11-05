@@ -7,7 +7,6 @@ When migrating to a database, this class will be replaced with a DB session wrap
 
 from datetime import datetime
 
-
 from app.schemas.course import Course, CourseCreate
 from app.schemas.professor import Professor, ProfessorCreate
 from app.schemas.review import Review, ReviewCreate, ReviewUpdate
@@ -301,16 +300,16 @@ class DataStore:
         smu = self.create_university(UniversityCreate(name="SMU"))
 
         # Create sample professors
-        prof_johnson = self.create_professor(ProfessorCreate(name="Dr. Sarah Johnson", university_id=nus.id))
-        prof_chen = self.create_professor(ProfessorCreate(name="Prof. Michael Chen", university_id=ntu.id))
-        prof_rodriguez = self.create_professor(ProfessorCreate(name="Dr. Emily Rodriguez", university_id=smu.id))
-        prof_kim = self.create_professor(ProfessorCreate(name="Dr. Robert Kim", university_id=nus.id))
+        self.create_professor(ProfessorCreate(name="Dr. Sarah Johnson", university_id=nus.id))
+        self.create_professor(ProfessorCreate(name="Prof. Michael Chen", university_id=ntu.id))
+        self.create_professor(ProfessorCreate(name="Dr. Emily Rodriguez", university_id=smu.id))
+        self.create_professor(ProfessorCreate(name="Dr. Robert Kim", university_id=nus.id))
 
         # Create sample courses
-        cs101 = self.create_course(CourseCreate(code="CS101", name="Introduction to Computer Science", university_id=nus.id))
-        cs201 = self.create_course(CourseCreate(code="CS201", name="Data Structures and Algorithms", university_id=ntu.id))
-        math220 = self.create_course(CourseCreate(code="MATH220", name="Calculus II", university_id=smu.id))
-        phys101 = self.create_course(CourseCreate(code="PHYS101", name="General Physics I", university_id=nus.id))
+        self.create_course(CourseCreate(code="CS101", name="Introduction to Computer Science", university_id=nus.id))
+        self.create_course(CourseCreate(code="CS201", name="Data Structures and Algorithms", university_id=ntu.id))
+        self.create_course(CourseCreate(code="MATH220", name="Calculus II", university_id=smu.id))
+        self.create_course(CourseCreate(code="PHYS101", name="General Physics I", university_id=nus.id))
 
         # Create sample reviews
         sample_reviews = [
@@ -348,39 +347,17 @@ class DataStore:
                 professor_name="Dr. Sarah Johnson"
             ),
             ReviewCreate(
-                overall_rating=4.8,
-                difficulty_rating=4.5,
-                workload_rating=4.3,
-                comment="Extremely difficult but Dr. Rodriguez is an amazing teacher. Office hours are very helpful.",
-                semester="AY2022/23 Sem 1",
-                year=2022,
-                course_code="MATH220",
-                university="SMU",
-                professor_name="Dr. Emily Rodriguez"
-            ),
-            ReviewCreate(
-                overall_rating=4.0,
-                difficulty_rating=4.0,
-                workload_rating=3.8,
-                comment="Good course material. Professor could be more engaging during lectures.",
-                semester="AY2023/24 Sem 2",
-                year=2023,
-                course_code="CS201",
-                university="NTU",
-                professor_name="Prof. Michael Chen"
-            ),
-            ReviewCreate(
                 overall_rating=3.5,
-                difficulty_rating=3.8,
-                workload_rating=3.5,
-                comment="Decent physics course. Labs are well organized.",
-                semester="AY2023/24 Sem 2",
+                difficulty_rating=3.2,
+                workload_rating=3.0,
+                comment="Solid introduction with practical examples. Workload is manageable.",
+                semester="AY2023/24 Sem 1",
                 year=2023,
-                course_code="PHYS101",
+                course_code="CS101",
                 university="NUS",
-                professor_name="Dr. Robert Kim"
-            )
+                professor_name="Dr. Sarah Johnson"
+            ),
         ]
 
-        for review_data in sample_reviews:
-            self.create_review(review_data)
+        for review_in in sample_reviews:
+            self.create_review(review_in)

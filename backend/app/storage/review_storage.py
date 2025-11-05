@@ -1,8 +1,5 @@
 """In-memory storage for reviews."""
 
-from datetime import datetime
-
-
 from app.schemas.review import Review, ReviewCreate, ReviewUpdate
 from app.storage.data_store import DataStore
 
