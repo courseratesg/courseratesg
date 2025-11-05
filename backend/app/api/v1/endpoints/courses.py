@@ -18,14 +18,8 @@ router = APIRouter(prefix="/courses", tags=["courses"])
 @router.get("/", response_model=list[Course])
 def list_courses(
     course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
-    code: Annotated[
-        str | None, 
-        Query(description="Filter by course code (case-insensitive partial match)")
-    ] = None,
-    university: Annotated[
-        str | None, 
-        Query(description="Filter by university (case-insensitive exact match)")
-    ] = None,
+    code: Annotated[str | None, Query(description="Filter by course code (case-insensitive partial match)")] = None,
+    university: Annotated[str | None, Query(description="Filter by university (case-insensitive exact match)")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
@@ -74,10 +68,7 @@ def get_course(
     """
     course = data_store.get_course(course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course with ID {course_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
     return course
 
 
@@ -106,21 +97,20 @@ def get_course_reviews(
     # Check if course exists
     course = data_store.get_course(course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course with ID {course_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
     # Get all reviews and filter by course code and university
     all_reviews = data_store.get_all_reviews()
     course_reviews = [
-        review for review in all_reviews 
-        if (review.course_code.lower() == course.code.lower() and 
-            review.university.lower() == course.university.lower())
+        review
+        for review in all_reviews
+        if (
+            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
+        )
     ]
-    
+
     # Apply pagination
-    paginated_reviews = course_reviews[skip:skip + limit]
+    paginated_reviews = course_reviews[skip : skip + limit]
     return paginated_reviews
 
 
@@ -145,17 +135,16 @@ def get_course_stats(
     # Check if course exists
     course = data_store.get_course(course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course with ID {course_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
     # Get all reviews for this course
     all_reviews = data_store.get_all_reviews()
     course_reviews = [
-        review for review in all_reviews 
-        if (review.course_code.lower() == course.code.lower() and 
-            review.university.lower() == course.university.lower())
+        review
+        for review in all_reviews
+        if (
+            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
+        )
     ]
 
     if not course_reviews:
@@ -168,10 +157,8 @@ def get_course_stats(
             "average_overall_rating": None,
             "average_difficulty_rating": None,
             "average_workload_rating": None,
-            "rating_distribution": {
-                "5": 0, "4": 0, "3": 0, "2": 0, "1": 0
-            },
-            "professors": []
+            "rating_distribution": {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0},
+            "professors": [],
         }
 
     # Calculate statistics
@@ -188,10 +175,7 @@ def get_course_stats(
             rating_distribution[rating_key] += 1
 
     # Get unique professors who taught this course
-    professors = list(set([
-        review.professor_name for review in course_reviews 
-        if review.professor_name
-    ]))
+    professors = list(set([review.professor_name for review in course_reviews if review.professor_name]))
 
     return {
         "course_id": course_id,
@@ -203,7 +187,7 @@ def get_course_stats(
         "average_difficulty_rating": round(avg_difficulty, 2),
         "average_workload_rating": round(avg_workload, 2),
         "rating_distribution": rating_distribution,
-        "professors": sorted(professors)
+        "professors": sorted(professors),
     }
 
 
@@ -228,49 +212,47 @@ def get_course_professors(
     # Check if course exists
     course = data_store.get_course(course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course with ID {course_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
     # Get all reviews for this course
     all_reviews = data_store.get_all_reviews()
     course_reviews = [
-        review for review in all_reviews 
-        if (review.course_code.lower() == course.code.lower() and 
-            review.university.lower() == course.university.lower())
+        review
+        for review in all_reviews
+        if (
+            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
+        )
     ]
 
     # Get unique professors and their basic info
-    professor_names = set([
-        review.professor_name for review in course_reviews 
-        if review.professor_name
-    ])
+    professor_names = set([review.professor_name for review in course_reviews if review.professor_name])
 
     professors_info = []
     all_professors = data_store.get_all_professors()
-    
+
     for prof_name in professor_names:
         # Find the professor object
         professor = next((p for p in all_professors if p.name.lower() == prof_name.lower()), None)
         if professor:
             # Count reviews for this professor in this course
             prof_course_reviews = [
-                r for r in course_reviews 
-                if r.professor_name and r.professor_name.lower() == prof_name.lower()
+                r for r in course_reviews if r.professor_name and r.professor_name.lower() == prof_name.lower()
             ]
-            
+
             avg_rating = (
-                sum(r.overall_rating for r in prof_course_reviews) / len(prof_course_reviews) 
-                if prof_course_reviews else 0
+                sum(r.overall_rating for r in prof_course_reviews) / len(prof_course_reviews)
+                if prof_course_reviews
+                else 0
             )
-            
-            professors_info.append({
-                "id": professor.id,
-                "name": professor.name,
-                "university": professor.university,
-                "reviews_for_this_course": len(prof_course_reviews),
-                "average_rating_for_this_course": round(avg_rating, 2) if prof_course_reviews else None
-            })
+
+            professors_info.append(
+                {
+                    "id": professor.id,
+                    "name": professor.name,
+                    "university": professor.university,
+                    "reviews_for_this_course": len(prof_course_reviews),
+                    "average_rating_for_this_course": round(avg_rating, 2) if prof_course_reviews else None,
+                }
+            )
 
     return {"data": sorted(professors_info, key=lambda x: x["name"])}

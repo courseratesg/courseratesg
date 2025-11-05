@@ -228,7 +228,7 @@ class DataStore:
         professor_data = professor_in.model_dump()
         professor_data["id"] = self._next_professor_id
         professor_data["review_count"] = 0
-        
+
         # Get university name
         university = self.get_university(professor_in.university_id)
         if university:
@@ -278,7 +278,7 @@ class DataStore:
         course_data = course_in.model_dump()
         course_data["id"] = self._next_course_id
         course_data["review_count"] = 0
-        
+
         # Get university name
         university = self.get_university(course_in.university_id)
         if university:
@@ -322,7 +322,7 @@ class DataStore:
                 year=2023,
                 course_code="CS101",
                 university="NUS",
-                professor_name="Dr. Sarah Johnson"
+                professor_name="Dr. Sarah Johnson",
             ),
             ReviewCreate(
                 overall_rating=3.8,
@@ -333,7 +333,7 @@ class DataStore:
                 year=2023,
                 course_code="CS201",
                 university="NTU",
-                professor_name="Prof. Michael Chen"
+                professor_name="Prof. Michael Chen",
             ),
             ReviewCreate(
                 overall_rating=4.2,
@@ -344,7 +344,7 @@ class DataStore:
                 year=2023,
                 course_code="CS101",
                 university="NUS",
-                professor_name="Dr. Sarah Johnson"
+                professor_name="Dr. Sarah Johnson",
             ),
             ReviewCreate(
                 overall_rating=3.5,
@@ -355,7 +355,7 @@ class DataStore:
                 year=2023,
                 course_code="CS101",
                 university="NUS",
-                professor_name="Dr. Sarah Johnson"
+                professor_name="Dr. Sarah Johnson",
             ),
         ]
 

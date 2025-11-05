@@ -1,7 +1,5 @@
 """In-memory storage for universities."""
 
-
-
 from app.schemas.university import University
 from app.storage.data_store import DataStore
 

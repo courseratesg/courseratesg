@@ -1,7 +1,5 @@
 """Course storage implementation."""
 
-
-
 from app.schemas.course import Course
 from app.storage.data_store import DataStore
 

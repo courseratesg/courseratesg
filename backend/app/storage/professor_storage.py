@@ -1,7 +1,5 @@
 """Professor storage implementation."""
 
-
-
 from app.schemas.professor import Professor
 from app.storage.data_store import DataStore
 

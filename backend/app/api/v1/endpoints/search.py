@@ -32,13 +32,13 @@ def search_professors(
 
     query_lower = q.lower().strip()
     professors = data_store.get_all_professors()
-    
+
     # Fuzzy search: check if query is contained in professor name
     matching_professors = []
     for professor in professors:
         if query_lower in professor.name.lower():
             matching_professors.append(professor.name)
-    
+
     # Remove duplicates and sort
     unique_names = sorted(list(set(matching_professors)))
     return {"data": unique_names}
@@ -68,29 +68,33 @@ def search_courses(
 
     query_upper = q.upper().strip()
     courses = data_store.get_all_courses()
-    
+
     matching_courses = []
     for course in courses:
         course_code_upper = course.code.upper()
-        
+
         # Choose matching strategy based on exact parameter
         if exact:
             # Exact match
             if course_code_upper == query_upper:
-                matching_courses.append({
-                    "code": course.code,
-                    "name": course.code,  # Using code as name for now
-                    "university": course.university
-                })
+                matching_courses.append(
+                    {
+                        "code": course.code,
+                        "name": course.code,  # Using code as name for now
+                        "university": course.university,
+                    }
+                )
         else:
             # Partial match
             if query_upper in course_code_upper:
-                matching_courses.append({
-                    "code": course.code,
-                    "name": course.code,  # Using code as name for now
-                    "university": course.university
-                })
-    
+                matching_courses.append(
+                    {
+                        "code": course.code,
+                        "name": course.code,  # Using code as name for now
+                        "university": course.university,
+                    }
+                )
+
     return {"data": matching_courses}
 
 
@@ -120,11 +124,7 @@ def global_search(
     matching_professors = []
     for professor in professors:
         if query_lower in professor.name.lower():
-            matching_professors.append({
-                "name": professor.name,
-                "university": professor.university,
-                "id": professor.id
-            })
+            matching_professors.append({"name": professor.name, "university": professor.university, "id": professor.id})
 
     # Search courses (exact match)
     query_upper = q.upper().strip()
@@ -132,19 +132,11 @@ def global_search(
     matching_courses = []
     for course in courses:
         if course.code.upper() == query_upper:
-            matching_courses.append({
-                "code": course.code,
-                "name": course.code,
-                "university": course.university,
-                "id": course.id
-            })
+            matching_courses.append(
+                {"code": course.code, "name": course.code, "university": course.university, "id": course.id}
+            )
 
-    return {
-        "data": {
-            "professors": matching_professors,
-            "courses": matching_courses
-        }
-    }
+    return {"data": {"professors": matching_professors, "courses": matching_courses}}
 
 
 @router.get("/stats")
@@ -174,12 +166,10 @@ def search_stats(
             "total_universities": len(universities),
             "total_reviews": len(reviews),
             "professors_by_university": {
-                uni.name: len([p for p in professors if p.university_id == uni.id])
-                for uni in universities
+                uni.name: len([p for p in professors if p.university_id == uni.id]) for uni in universities
             },
             "courses_by_university": {
-                uni.name: len([c for c in courses if c.university_id == uni.id])
-                for uni in universities
-            }
+                uni.name: len([c for c in courses if c.university_id == uni.id]) for uni in universities
+            },
         }
     }

@@ -18,10 +18,7 @@ router = APIRouter(prefix="/professors", tags=["professors"])
 @router.get("/", response_model=list[Professor])
 def list_professors(
     professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
-    name: Annotated[
-        str | None, 
-        Query(description="Filter by professor name (case-insensitive partial match)")
-    ] = None,
+    name: Annotated[str | None, Query(description="Filter by professor name (case-insensitive partial match)")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
@@ -67,10 +64,7 @@ def get_professor(
     """
     professor = data_store.get_professor(professor_id)
     if not professor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Professor with ID {professor_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
     return professor
 
 
@@ -99,20 +93,18 @@ def get_professor_reviews(
     # Check if professor exists
     professor = data_store.get_professor(professor_id)
     if not professor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Professor with ID {professor_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
 
     # Get all reviews and filter by professor name
     all_reviews = data_store.get_all_reviews()
     professor_reviews = [
-        review for review in all_reviews 
+        review
+        for review in all_reviews
         if review.professor_name and review.professor_name.lower() == professor.name.lower()
     ]
-    
+
     # Apply pagination
-    paginated_reviews = professor_reviews[skip:skip + limit]
+    paginated_reviews = professor_reviews[skip : skip + limit]
     return paginated_reviews
 
 
@@ -137,15 +129,13 @@ def get_professor_stats(
     # Check if professor exists
     professor = data_store.get_professor(professor_id)
     if not professor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Professor with ID {professor_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
 
     # Get all reviews for this professor
     all_reviews = data_store.get_all_reviews()
     professor_reviews = [
-        review for review in all_reviews 
+        review
+        for review in all_reviews
         if review.professor_name and review.professor_name.lower() == professor.name.lower()
     ]
 
@@ -158,9 +148,7 @@ def get_professor_stats(
             "average_overall_rating": None,
             "average_difficulty_rating": None,
             "average_workload_rating": None,
-            "rating_distribution": {
-                "5": 0, "4": 0, "3": 0, "2": 0, "1": 0
-            }
+            "rating_distribution": {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0},
         }
 
     # Calculate statistics
@@ -184,5 +172,5 @@ def get_professor_stats(
         "average_overall_rating": round(avg_overall, 2),
         "average_difficulty_rating": round(avg_difficulty, 2),
         "average_workload_rating": round(avg_workload, 2),
-        "rating_distribution": rating_distribution
+        "rating_distribution": rating_distribution,
     }
