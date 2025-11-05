@@ -1,8 +1,7 @@
 """In-memory storage for reviews."""
 
-from datetime import datetime
-
 from app.schemas.review import Review, ReviewCreate, ReviewUpdate
+from app.storage.data_store import DataStore
 
 
 class ReviewStorage:
@@ -10,10 +9,14 @@ class ReviewStorage:
 
     """ Later to be replaced with persistent AWS RDS storage. """
 
-    def __init__(self):
-        """Initialize storage."""
-        self._reviews: dict[int, Review] = {}
-        self._next_id: int = 1
+    def __init__(self, data_store: DataStore):
+        """
+        Initialize storage.
+
+        Args:
+            data_store: DataStore instance for data access
+        """
+        self._data_store = data_store
 
     def create(self, review_in: ReviewCreate) -> Review:
         """
@@ -25,16 +28,7 @@ class ReviewStorage:
         Returns:
             Created review
         """
-        review_data = review_in.model_dump()
-        review_data["id"] = self._next_id
-        review_data["created_at"] = datetime.utcnow()
-        review_data["updated_at"] = datetime.utcnow()
-
-        review = Review(**review_data)
-        self._reviews[self._next_id] = review
-        self._next_id += 1
-
-        return review
+        return self._data_store.create_review(review_in)
 
     def get(self, review_id: int) -> Review | None:
         """
@@ -46,7 +40,7 @@ class ReviewStorage:
         Returns:
             Review or None if not found
         """
-        return self._reviews.get(review_id)
+        return self._data_store.get_review(review_id)
 
     def get_all(self, skip: int = 0, limit: int = 100) -> list[Review]:
         """
@@ -59,7 +53,7 @@ class ReviewStorage:
         Returns:
             List of reviews
         """
-        all_reviews = list(self._reviews.values())
+        all_reviews = self._data_store.get_all_reviews()
         return all_reviews[skip : skip + limit]
 
     def update(self, review_id: int, review_in: ReviewUpdate) -> Review | None:
@@ -73,18 +67,7 @@ class ReviewStorage:
         Returns:
             Updated review or None if not found
         """
-        review = self._reviews.get(review_id)
-        if not review:
-            return None
-
-        update_data = review_in.model_dump(exclude_unset=True)
-        updated_fields = {**review.model_dump(), **update_data}
-        updated_fields["updated_at"] = datetime.utcnow()
-
-        updated_review = Review(**updated_fields)
-        self._reviews[review_id] = updated_review
-
-        return updated_review
+        return self._data_store.update_review(review_id, review_in)
 
     def delete(self, review_id: int) -> bool:
         """
@@ -96,10 +79,7 @@ class ReviewStorage:
         Returns:
             True if deleted, False if not found
         """
-        if review_id in self._reviews:
-            del self._reviews[review_id]
-            return True
-        return False
+        return self._data_store.delete_review(review_id)
 
     def filter_reviews(
         self,
@@ -125,7 +105,7 @@ class ReviewStorage:
         Returns:
             List of filtered reviews
         """
-        filtered = list(self._reviews.values())
+        filtered = self._data_store.get_all_reviews()
 
         if professor_name:
             filtered = [r for r in filtered if r.professor_name and r.professor_name.lower() == professor_name.lower()]
@@ -160,7 +140,7 @@ class ReviewStorage:
         Returns:
             Dictionary with average ratings and count
         """
-        filtered = list(self._reviews.values())
+        filtered = self._data_store.get_all_reviews()
 
         if professor_name:
             filtered = [r for r in filtered if r.professor_name and r.professor_name.lower() == professor_name.lower()]

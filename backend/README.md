@@ -16,15 +16,38 @@ The backend follows a clean architecture with clear separation of concerns:
 
 - **app/settings**: Application configuration (API settings, CORS)
 - **app/schemas**: Pydantic schemas for validation and serialization
-- **app/storage**: In-memory storage (will be replaced with database in RDS branch)
+  - Base classes for shared fields (e.g., `UniversityBase`)
+  - Create schemas for input validation (e.g., `UniversityCreate`)
+  - Response schemas with computed fields (e.g., `University`)
+- **app/storage**: In-memory storage layer
+  - `DataStore`: Central data access layer managing all entities (universities, professors, courses, reviews)
+  - Storage classes: Business logic for entity-specific operations
+  - Will be replaced with database session in RDS branch
 - **app/api**: API endpoints organized by version
+  - Dependency injection for storage instances
+  - RESTful endpoint design
 
 ## Development
 
 ### Prerequisites
 
 - Python 3.11+
-- Poetry
+- Poetry (Python package manager)
+
+**Install Poetry:**
+
+```bash
+# On macOS/Linux/WSL
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Or using pip
+pip install poetry
+
+# Verify installation
+poetry --version
+```
+
+For more installation options, visit [Poetry's official documentation](https://python-poetry.org/docs/#installation).
 
 ### Setup
 
@@ -34,17 +57,34 @@ The backend follows a clean architecture with clear separation of concerns:
 poetry install
 ```
 
-2. (Optional) Create a `.env` file for custom configuration:
+2. (Optional) Install pymake for running Makefile commands on Windows:
+
+```bash
+# Only needed on Windows or systems without make
+pip install pymake
+```
+
+3. (Optional) Create a `.env.local` file for custom configuration:
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-3. Configure database settings in `.env.local` file
+4. Configure database settings in `.env.local` file
 
 ### Run the application
 
+**Using Makefile (recommended):**
+
 ```bash
+# On macOS/Linux (with make installed)
+make run-dev
+
+# On Windows or systems without make, install pymake first:
+pip install py-make
+pymake run-dev
+
+# Or run directly with poetry
 poetry run uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
@@ -54,12 +94,39 @@ The API will be available at:
 - Interactive API docs (Swagger): http://localhost:8080/docs
 - Alternative API docs (ReDoc): http://localhost:8080/redoc
 
-### Lint and format
+### Lint, format, and check
+
+**Using Makefile (recommended):**
 
 ```bash
-poetry run ruff check .
-poetry run ruff format .
+# Quick fix and format
+make ruff
+
+# Format only
+make format
+
+# Run all checks (ruff, mypy, bandit)
+make check
 ```
+
+**Or run commands directly:**
+
+```bash
+poetry run ruff check . --fix
+poetry run ruff format .
+poetry run mypy .
+poetry run bandit -r app
+```
+
+### Available Makefile commands
+
+- `make run` - Run the server (production mode)
+- `make run-dev` - Run the server with auto-reload (development mode)
+- `make ruff` - Fix linting issues and format code
+- `make format` - Format code only
+- `make check` - Run all checks (linting, formatting, type checking, security)
+
+**Note:** On Windows or systems without `make`, replace `make` with `pymake` in all commands above (e.g., `pymake run-dev`).
 
 ## API Endpoints
 
@@ -85,10 +152,26 @@ poetry run ruff format .
 - `PUT /api/v1/reviews/{review_id}` - Update review
 - `DELETE /api/v1/reviews/{review_id}` - Delete review
 
-### Statistics
-
+**Statistics**
 - `GET /api/v1/reviews/stats?professor_name={name}` - Get aggregated stats for a professor
 - `GET /api/v1/reviews/stats?course_code={code}&university={uni}` - Get aggregated stats for a course
+
+### Professor Management
+
+- `GET /api/v1/professors/` - List all professors (with pagination)
+- `GET /api/v1/professors/?name={name}` - Filter professors by name (partial match)
+
+### Course Management
+
+- `GET /api/v1/courses/` - List all courses (with pagination)
+- `GET /api/v1/courses/?code={code}` - Filter courses by course code (partial match)
+- `GET /api/v1/courses/?university={uni}` - Filter courses by university (exact match)
+- `GET /api/v1/courses/?code={code}&university={uni}` - Filter by both
+
+### University Management
+
+- `GET /api/v1/universities/` - List all universities (with pagination)
+- `GET /api/v1/universities/?name={name}` - Filter universities by name (partial match)
 
 ## Data Models
 
@@ -106,12 +189,37 @@ Each review includes:
 - **university**: University name (e.g., "NUS")
 - **professor_name** (optional): Professor name
 
+### Professor Schema
+
+Each professor includes:
+- **id**: Professor ID (auto-generated)
+- **name**: Professor name
+- **university_id**: University ID where professor teaches
+- **university**: University name (populated from university_id)
+- **review_count**: Number of reviews for this professor
+
+### Course Schema
+
+Each course includes:
+- **id**: Course ID (auto-generated)
+- **code**: Course code (e.g., "CS5224")
+- **university_id**: University ID offering this course
+- **university**: University name (populated from university_id)
+- **review_count**: Number of reviews for this course
+
+### University Schema
+
+Each university includes:
+- **id**: University ID (auto-generated)
+- **name**: University name (e.g., "NUS")
+- **review_count**: Number of reviews for this university
+
 ## Example Usage
 
 ### Create a review
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/reviews/" \
+curl -X POST "http://localhost:8080/api/v1/reviews/" \
   -H "Content-Type: application/json" \
   -d '{
     "overall_rating": 4.5,
@@ -129,13 +237,49 @@ curl -X POST "http://localhost:8000/api/v1/reviews/" \
 ### Get reviews by professor
 
 ```bash
-curl "http://localhost:8000/api/v1/reviews/?professor_name=John%20Doe"
+curl "http://localhost:8080/api/v1/reviews/?professor_name=John%20Doe"
 ```
 
 ### Get course statistics
 
 ```bash
-curl "http://localhost:8000/api/v1/reviews/stats?course_code=CS5224&university=NUS"
+curl "http://localhost:8080/api/v1/reviews/stats?course_code=CS5224&university=NUS"
+```
+
+### List all professors
+
+```bash
+curl "http://localhost:8080/api/v1/professors/"
+```
+
+### Search professors by name
+
+```bash
+curl "http://localhost:8080/api/v1/professors/?name=John"
+```
+
+### List all courses
+
+```bash
+curl "http://localhost:8080/api/v1/courses/"
+```
+
+### Search courses by code
+
+```bash
+curl "http://localhost:8080/api/v1/courses/?code=CS52"
+```
+
+### List all universities
+
+```bash
+curl "http://localhost:8080/api/v1/universities/"
+```
+
+### Search universities by name
+
+```bash
+curl "http://localhost:8080/api/v1/universities/?name=NUS"
 ```
 
 ## Features
