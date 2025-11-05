@@ -6,7 +6,7 @@ When migrating to a database, this class will be replaced with a DB session wrap
 """
 
 from datetime import datetime
-from typing import Optional
+
 
 from app.schemas.course import Course, CourseCreate
 from app.schemas.professor import Professor, ProfessorCreate
@@ -48,7 +48,7 @@ class DataStore:
         """
         return list(self._reviews.values())
 
-    def get_review(self, review_id: int) -> Optional[Review]:
+    def get_review(self, review_id: int) -> Review | None:
         """
         Get a single review by ID.
 
@@ -81,7 +81,7 @@ class DataStore:
 
         return review
 
-    def update_review(self, review_id: int, review_in: ReviewUpdate) -> Optional[Review]:
+    def update_review(self, review_id: int, review_in: ReviewUpdate) -> Review | None:
         """
         Update an existing review.
 
@@ -146,7 +146,7 @@ class DataStore:
         """
         return list(self._universities.values())
 
-    def get_university(self, university_id: int) -> Optional[University]:
+    def get_university(self, university_id: int) -> University | None:
         """
         Get a single university by ID.
 
@@ -158,7 +158,7 @@ class DataStore:
         """
         return self._universities.get(university_id)
 
-    def get_university_by_name(self, name: str) -> Optional[University]:
+    def get_university_by_name(self, name: str) -> University | None:
         """
         Get a university by name (case-insensitive exact match).
 
@@ -204,7 +204,7 @@ class DataStore:
         """
         return list(self._professors.values())
 
-    def get_professor(self, professor_id: int) -> Optional[Professor]:
+    def get_professor(self, professor_id: int) -> Professor | None:
         """
         Get a single professor by ID.
 
@@ -254,7 +254,7 @@ class DataStore:
         """
         return list(self._courses.values())
 
-    def get_course(self, course_id: int) -> Optional[Course]:
+    def get_course(self, course_id: int) -> Course | None:
         """
         Get a single course by ID.
 

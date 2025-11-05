@@ -1,6 +1,6 @@
 """In-memory storage for universities."""
 
-from typing import Optional
+
 
 from app.schemas.university import University
 from app.storage.data_store import DataStore
@@ -21,7 +21,7 @@ class UniversityStorage:
     def list_universities(
         self,
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[University]:

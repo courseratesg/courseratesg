@@ -18,7 +18,7 @@ router = APIRouter(prefix="/universities", tags=["universities"])
 def list_universities(
     university_storage: Annotated[UniversityStorage, Depends(get_university_storage)],
     name: Annotated[
-        Optional[str],
+        str | None,
         Query(description="Filter by university name (case-insensitive partial match)"),
     ] = None,
     skip: Annotated[int, Query(ge=0)] = 0,

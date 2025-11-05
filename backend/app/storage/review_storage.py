@@ -1,7 +1,7 @@
 """In-memory storage for reviews."""
 
 from datetime import datetime
-from typing import Optional
+
 
 from app.schemas.review import Review, ReviewCreate, ReviewUpdate
 from app.storage.data_store import DataStore
@@ -33,7 +33,7 @@ class ReviewStorage:
         """
         return self._data_store.create_review(review_in)
 
-    def get(self, review_id: int) -> Optional[Review]:
+    def get(self, review_id: int) -> Review | None:
         """
         Get a review by ID.
 
@@ -59,7 +59,7 @@ class ReviewStorage:
         all_reviews = self._data_store.get_all_reviews()
         return all_reviews[skip : skip + limit]
 
-    def update(self, review_id: int, review_in: ReviewUpdate) -> Optional[Review]:
+    def update(self, review_id: int, review_in: ReviewUpdate) -> Review | None:
         """
         Update a review.
 
@@ -87,10 +87,10 @@ class ReviewStorage:
     def filter_reviews(
         self,
         *,
-        professor_name: Optional[str] = None,
-        course_code: Optional[str] = None,
-        university: Optional[str] = None,
-        user_id: Optional[int] = None,
+        professor_name: str | None = None,
+        course_code: str | None = None,
+        university: str | None = None,
+        user_id: int | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Review]:
@@ -128,9 +128,9 @@ class ReviewStorage:
     def get_stats(
         self,
         *,
-        professor_name: Optional[str] = None,
-        course_code: Optional[str] = None,
-        university: Optional[str] = None,
+        professor_name: str | None = None,
+        course_code: str | None = None,
+        university: str | None = None,
     ) -> dict:
         """
         Get aggregated statistics for reviews matching criteria.
