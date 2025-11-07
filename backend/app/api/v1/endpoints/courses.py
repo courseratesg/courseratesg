@@ -4,11 +4,16 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from app.api.v1.depends.storage import get_course_storage, get_data_store
+from app.api.v1.depends.storage import (
+    get_course_storage,
+    get_professor_storage,
+    get_review_storage,
+)
 from app.schemas.course import Course
 from app.schemas.review import Review
 from app.storage.course_storage import CourseStorage
-from app.storage.data_store import DataStore
+from app.storage.professor_storage import ProfessorStorage
+from app.storage.review_storage import ReviewStorage
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
@@ -51,14 +56,14 @@ def list_courses(
 @router.get("/{course_id}", response_model=Course)
 def get_course(
     course_id: Annotated[int, Path(description="Course ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
 ) -> Any:
     """
     Get a specific course by ID.
 
     Args:
         course_id: Course ID
-        data_store: Data store dependency
+        course_storage: Course storage dependency
 
     Returns:
         Course details
@@ -66,7 +71,7 @@ def get_course(
     Raises:
         HTTPException: If course not found
     """
-    course = data_store.get_course(course_id)
+    course = course_storage.get(course_id)
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
     return course
@@ -75,7 +80,8 @@ def get_course(
 @router.get("/{course_id}/reviews", response_model=list[Review])
 def get_course_reviews(
     course_id: Annotated[int, Path(description="Course ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
@@ -84,7 +90,8 @@ def get_course_reviews(
 
     Args:
         course_id: Course ID
-        data_store: Data store dependency
+        course_storage: Course storage dependency
+        review_storage: Review storage dependency
         skip: Number of records to skip
         limit: Maximum number of records to return
 
@@ -95,36 +102,30 @@ def get_course_reviews(
         HTTPException: If course not found
     """
     # Check if course exists
-    course = data_store.get_course(course_id)
+    course = course_storage.get(course_id)
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
-    # Get all reviews and filter by course code and university
-    all_reviews = data_store.get_all_reviews()
-    course_reviews = [
-        review
-        for review in all_reviews
-        if (
-            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
-        )
-    ]
-
-    # Apply pagination
-    paginated_reviews = course_reviews[skip : skip + limit]
-    return paginated_reviews
+    # Get reviews filtered by course code and university
+    reviews = review_storage.filter_reviews(
+        course_code=course.code, university=course.university, skip=skip, limit=limit
+    )
+    return reviews
 
 
 @router.get("/{course_id}/stats")
 def get_course_stats(
     course_id: Annotated[int, Path(description="Course ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Get statistics for a specific course.
 
     Args:
         course_id: Course ID
-        data_store: Data store dependency
+        course_storage: Course storage dependency
+        review_storage: Review storage dependency
 
     Returns:
         Course statistics including average ratings and review count
@@ -133,59 +134,37 @@ def get_course_stats(
         HTTPException: If course not found
     """
     # Check if course exists
-    course = data_store.get_course(course_id)
+    course = course_storage.get(course_id)
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
-    # Get all reviews for this course
-    all_reviews = data_store.get_all_reviews()
-    course_reviews = [
-        review
-        for review in all_reviews
-        if (
-            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
-        )
-    ]
+    # Get statistics using database aggregation
+    stats = review_storage.get_stats(course_code=course.code, university=course.university)
 
-    if not course_reviews:
-        return {
-            "course_id": course_id,
-            "course_code": course.code,
-            "course_name": course.code,  # Using code as name for now
-            "university": course.university,
-            "total_reviews": 0,
-            "average_overall_rating": None,
-            "average_difficulty_rating": None,
-            "average_workload_rating": None,
-            "rating_distribution": {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0},
-            "professors": [],
-        }
-
-    # Calculate statistics
-    total_reviews = len(course_reviews)
-    avg_overall = sum(r.overall_rating for r in course_reviews) / total_reviews
-    avg_difficulty = sum(r.difficulty_rating for r in course_reviews) / total_reviews
-    avg_workload = sum(r.workload_rating for r in course_reviews) / total_reviews
+    # Get reviews for rating distribution and professors
+    reviews = review_storage.filter_reviews(course_code=course.code, university=course.university, skip=0, limit=10000)
 
     # Calculate rating distribution
     rating_distribution = {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0}
-    for review in course_reviews:
+    for review in reviews:
         rating_key = str(int(review.overall_rating))
         if rating_key in rating_distribution:
             rating_distribution[rating_key] += 1
 
     # Get unique professors who taught this course
-    professors = list(set([review.professor_name for review in course_reviews if review.professor_name]))
+    professors = list(set([review.professor_name for review in reviews if review.professor_name]))
 
     return {
         "course_id": course_id,
         "course_code": course.code,
-        "course_name": course.code,  # Using code as name for now
+        "course_name": course.name if hasattr(course, "name") and course.name else course.code,
         "university": course.university,
-        "total_reviews": total_reviews,
-        "average_overall_rating": round(avg_overall, 2),
-        "average_difficulty_rating": round(avg_difficulty, 2),
-        "average_workload_rating": round(avg_workload, 2),
+        "total_reviews": stats["review_count"],
+        "average_overall_rating": round(stats["avg_overall_rating"], 2) if stats["avg_overall_rating"] else None,
+        "average_difficulty_rating": (
+            round(stats["avg_difficulty_rating"], 2) if stats["avg_difficulty_rating"] else None
+        ),
+        "average_workload_rating": round(stats["avg_workload_rating"], 2) if stats["avg_workload_rating"] else None,
         "rating_distribution": rating_distribution,
         "professors": sorted(professors),
     }
@@ -194,14 +173,18 @@ def get_course_stats(
 @router.get("/{course_id}/professors")
 def get_course_professors(
     course_id: Annotated[int, Path(description="Course ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Get professors who have taught this course.
 
     Args:
         course_id: Course ID
-        data_store: Data store dependency
+        course_storage: Course storage dependency
+        professor_storage: Professor storage dependency
+        review_storage: Review storage dependency
 
     Returns:
         List of professors who taught this course
@@ -210,31 +193,26 @@ def get_course_professors(
         HTTPException: If course not found
     """
     # Check if course exists
-    course = data_store.get_course(course_id)
+    course = course_storage.get(course_id)
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course with ID {course_id} not found")
 
     # Get all reviews for this course
-    all_reviews = data_store.get_all_reviews()
-    course_reviews = [
-        review
-        for review in all_reviews
-        if (
-            review.course_code.lower() == course.code.lower() and review.university.lower() == course.university.lower()
-        )
-    ]
+    course_reviews = review_storage.filter_reviews(
+        course_code=course.code, university=course.university, skip=0, limit=10000
+    )
 
-    # Get unique professors and their basic info
+    # Get unique professor names
     professor_names = set([review.professor_name for review in course_reviews if review.professor_name])
 
     professors_info = []
-    all_professors = data_store.get_all_professors()
+    all_professors = professor_storage.list_professors(skip=0, limit=10000)
 
     for prof_name in professor_names:
         # Find the professor object
         professor = next((p for p in all_professors if p.name.lower() == prof_name.lower()), None)
         if professor:
-            # Count reviews for this professor in this course
+            # Get stats for this professor in this course
             prof_course_reviews = [
                 r for r in course_reviews if r.professor_name and r.professor_name.lower() == prof_name.lower()
             ]

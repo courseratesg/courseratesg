@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cs5224-postgres-dev
+    environment:
+      POSTGRES_DB: cs5224_dev
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persist data in a named volume
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: Add init scripts
+      # - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d cs5224_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cs5224-network
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cs5224-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cs5224.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - cs5224-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  cs5224-network:
+    driver: bridge

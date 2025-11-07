@@ -17,7 +17,11 @@ class ReviewBase(BaseModel):
 
     # For API-only branch: use names/codes instead of IDs
     course_code: str = Field(..., description="Course code (e.g., 'CS5224')")
-    university: str = Field(..., description="University name (e.g., 'NUS')")
+    university: str = Field(
+        ...,
+        validation_alias="university_name",  # Allow reading from DB model's university_name field
+        description="University name (e.g., 'NUS')",
+    )
     professor_name: str | None = Field(None, description="Professor name")
 
 
@@ -42,7 +46,7 @@ class ReviewUpdate(BaseModel):
 class Review(ReviewBase):
     """Schema for review responses."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: int
     user_id: str | None = Field(None, description="User ID (Cognito sub)")

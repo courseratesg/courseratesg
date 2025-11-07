@@ -4,8 +4,16 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.v1.depends.storage import get_data_store
-from app.storage.data_store import DataStore
+from app.api.v1.depends.storage import (
+    get_course_storage,
+    get_professor_storage,
+    get_review_storage,
+    get_university_storage,
+)
+from app.storage.course_storage import CourseStorage
+from app.storage.professor_storage import ProfessorStorage
+from app.storage.review_storage import ReviewStorage
+from app.storage.university_storage import UniversityStorage
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -13,7 +21,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 @router.get("/professors")
 def search_professors(
     q: Annotated[str, Query(description="Search query for professor name")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
 ) -> Any:
     """
     Search professors by name (fuzzy search).
@@ -22,7 +30,7 @@ def search_professors(
 
     Args:
         q: Search query for professor name
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
 
     Returns:
         List of professor names that match the query
@@ -30,24 +38,18 @@ def search_professors(
     if not q.strip():
         return {"data": []}
 
-    query_lower = q.lower().strip()
-    professors = data_store.get_all_professors()
+    # Use list_professors with name filter (already supports partial match)
+    professors = professor_storage.list_professors(name=q.strip(), skip=0, limit=100)
 
-    # Fuzzy search: check if query is contained in professor name
-    matching_professors = []
-    for professor in professors:
-        if query_lower in professor.name.lower():
-            matching_professors.append(professor.name)
-
-    # Remove duplicates and sort
-    unique_names = sorted(list(set(matching_professors)))
+    # Extract and deduplicate names
+    unique_names = sorted(list(set([p.name for p in professors])))
     return {"data": unique_names}
 
 
 @router.get("/courses")
 def search_courses(
     q: Annotated[str, Query(description="Search query for course code")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
     exact: Annotated[bool, Query(description="Whether to use exact match (default: true)")] = True,
 ) -> Any:
     """
@@ -58,7 +60,7 @@ def search_courses(
     Args:
         q: Search query for course code
         exact: Whether to use exact match (default: true)
-        data_store: Data store dependency
+        course_storage: Course storage dependency
 
     Returns:
         List of courses that match the query
@@ -66,34 +68,21 @@ def search_courses(
     if not q.strip():
         return {"data": []}
 
-    query_upper = q.upper().strip()
-    courses = data_store.get_all_courses()
+    # Use list_courses with code filter (already supports partial match)
+    courses = course_storage.list_courses(code=q.strip(), skip=0, limit=100)
 
-    matching_courses = []
-    for course in courses:
-        course_code_upper = course.code.upper()
+    # For exact match, filter results
+    if exact:
+        courses = [c for c in courses if c.code.lower() == q.strip().lower()]
 
-        # Choose matching strategy based on exact parameter
-        if exact:
-            # Exact match
-            if course_code_upper == query_upper:
-                matching_courses.append(
-                    {
-                        "code": course.code,
-                        "name": course.code,  # Using code as name for now
-                        "university": course.university,
-                    }
-                )
-        else:
-            # Partial match
-            if query_upper in course_code_upper:
-                matching_courses.append(
-                    {
-                        "code": course.code,
-                        "name": course.code,  # Using code as name for now
-                        "university": course.university,
-                    }
-                )
+    matching_courses = [
+        {
+            "code": course.code,
+            "name": course.name if hasattr(course, "name") and course.name else course.code,
+            "university": course.university,
+        }
+        for course in courses
+    ]
 
     return {"data": matching_courses}
 
@@ -101,7 +90,8 @@ def search_courses(
 @router.get("/global")
 def global_search(
     q: Annotated[str, Query(description="Global search query")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
 ) -> Any:
     """
     Global search across professors and courses.
@@ -110,7 +100,8 @@ def global_search(
 
     Args:
         q: Search query
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
+        course_storage: Course storage dependency
 
     Returns:
         Dictionary with professors and courses results
@@ -118,30 +109,32 @@ def global_search(
     if not q.strip():
         return {"data": {"professors": [], "courses": []}}
 
-    # Search professors (fuzzy)
-    query_lower = q.lower().strip()
-    professors = data_store.get_all_professors()
-    matching_professors = []
-    for professor in professors:
-        if query_lower in professor.name.lower():
-            matching_professors.append({"name": professor.name, "university": professor.university, "id": professor.id})
+    # Search professors (fuzzy/partial match)
+    professors = professor_storage.list_professors(name=q.strip(), skip=0, limit=100)
+    matching_professors = [{"name": prof.name, "university": prof.university, "id": prof.id} for prof in professors]
 
     # Search courses (exact match)
-    query_upper = q.upper().strip()
-    courses = data_store.get_all_courses()
-    matching_courses = []
-    for course in courses:
-        if course.code.upper() == query_upper:
-            matching_courses.append(
-                {"code": course.code, "name": course.code, "university": course.university, "id": course.id}
-            )
+    all_courses = course_storage.list_courses(code=q.strip(), skip=0, limit=100)
+    exact_courses = [c for c in all_courses if c.code.lower() == q.strip().lower()]
+    matching_courses = [
+        {
+            "code": course.code,
+            "name": course.name if hasattr(course, "name") and course.name else course.code,
+            "university": course.university,
+            "id": course.id,
+        }
+        for course in exact_courses
+    ]
 
     return {"data": {"professors": matching_professors, "courses": matching_courses}}
 
 
 @router.get("/stats")
 def search_stats(
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
+    university_storage: Annotated[UniversityStorage, Depends(get_university_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Get search statistics.
@@ -149,15 +142,27 @@ def search_stats(
     Returns total counts of professors, courses, universities, and reviews.
 
     Args:
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
+        course_storage: Course storage dependency
+        university_storage: University storage dependency
+        review_storage: Review storage dependency
 
     Returns:
         Dictionary with search statistics
     """
-    professors = data_store.get_all_professors()
-    courses = data_store.get_all_courses()
-    universities = data_store.get_all_universities()
-    reviews = data_store.get_all_reviews()
+    # Get counts by fetching all records (pagination with large limit)
+    # TODO: Optimize with dedicated count queries in storage layer
+    professors = professor_storage.list_professors(skip=0, limit=10000)
+    courses = course_storage.list_courses(skip=0, limit=10000)
+    universities = university_storage.list_universities(skip=0, limit=10000)
+    reviews = review_storage.get_all(skip=0, limit=10000)
+
+    # Calculate stats by university
+    professors_by_uni = {}
+    courses_by_uni = {}
+    for uni in universities:
+        professors_by_uni[uni.name] = len([p for p in professors if p.university == uni.name])
+        courses_by_uni[uni.name] = len([c for c in courses if c.university == uni.name])
 
     return {
         "data": {
@@ -165,11 +170,7 @@ def search_stats(
             "total_courses": len(courses),
             "total_universities": len(universities),
             "total_reviews": len(reviews),
-            "professors_by_university": {
-                uni.name: len([p for p in professors if p.university_id == uni.id]) for uni in universities
-            },
-            "courses_by_university": {
-                uni.name: len([c for c in courses if c.university_id == uni.id]) for uni in universities
-            },
+            "professors_by_university": professors_by_uni,
+            "courses_by_university": courses_by_uni,
         }
     }

@@ -4,11 +4,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from app.api.v1.depends.storage import get_data_store, get_professor_storage
+from app.api.v1.depends.storage import get_professor_storage, get_review_storage
 from app.schemas.professor import Professor
 from app.schemas.review import Review
-from app.storage.data_store import DataStore
 from app.storage.professor_storage import ProfessorStorage
+from app.storage.review_storage import ReviewStorage
 
 router = APIRouter(prefix="/professors", tags=["professors"])
 
@@ -47,14 +47,14 @@ def list_professors(
 @router.get("/{professor_id}", response_model=Professor)
 def get_professor(
     professor_id: Annotated[int, Path(description="Professor ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
 ) -> Any:
     """
     Get a specific professor by ID.
 
     Args:
         professor_id: Professor ID
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
 
     Returns:
         Professor details
@@ -62,7 +62,7 @@ def get_professor(
     Raises:
         HTTPException: If professor not found
     """
-    professor = data_store.get_professor(professor_id)
+    professor = professor_storage.get(professor_id)
     if not professor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
     return professor
@@ -71,7 +71,8 @@ def get_professor(
 @router.get("/{professor_id}/reviews", response_model=list[Review])
 def get_professor_reviews(
     professor_id: Annotated[int, Path(description="Professor ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
@@ -80,7 +81,8 @@ def get_professor_reviews(
 
     Args:
         professor_id: Professor ID
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
+        review_storage: Review storage dependency
         skip: Number of records to skip
         limit: Maximum number of records to return
 
@@ -91,34 +93,28 @@ def get_professor_reviews(
         HTTPException: If professor not found
     """
     # Check if professor exists
-    professor = data_store.get_professor(professor_id)
+    professor = professor_storage.get(professor_id)
     if not professor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
 
-    # Get all reviews and filter by professor name
-    all_reviews = data_store.get_all_reviews()
-    professor_reviews = [
-        review
-        for review in all_reviews
-        if review.professor_name and review.professor_name.lower() == professor.name.lower()
-    ]
-
-    # Apply pagination
-    paginated_reviews = professor_reviews[skip : skip + limit]
-    return paginated_reviews
+    # Get reviews filtered by professor name
+    reviews = review_storage.filter_reviews(professor_name=professor.name, skip=skip, limit=limit)
+    return reviews
 
 
 @router.get("/{professor_id}/stats")
 def get_professor_stats(
     professor_id: Annotated[int, Path(description="Professor ID")],
-    data_store: Annotated[DataStore, Depends(get_data_store)],
+    professor_storage: Annotated[ProfessorStorage, Depends(get_professor_storage)],
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
 ) -> Any:
     """
     Get statistics for a specific professor.
 
     Args:
         professor_id: Professor ID
-        data_store: Data store dependency
+        professor_storage: Professor storage dependency
+        review_storage: Review storage dependency
 
     Returns:
         Professor statistics including average ratings and review count
@@ -127,39 +123,19 @@ def get_professor_stats(
         HTTPException: If professor not found
     """
     # Check if professor exists
-    professor = data_store.get_professor(professor_id)
+    professor = professor_storage.get(professor_id)
     if not professor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Professor with ID {professor_id} not found")
 
-    # Get all reviews for this professor
-    all_reviews = data_store.get_all_reviews()
-    professor_reviews = [
-        review
-        for review in all_reviews
-        if review.professor_name and review.professor_name.lower() == professor.name.lower()
-    ]
+    # Get statistics using database aggregation
+    stats = review_storage.get_stats(professor_name=professor.name)
 
-    if not professor_reviews:
-        return {
-            "professor_id": professor_id,
-            "professor_name": professor.name,
-            "university": professor.university,
-            "total_reviews": 0,
-            "average_overall_rating": None,
-            "average_difficulty_rating": None,
-            "average_workload_rating": None,
-            "rating_distribution": {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0},
-        }
-
-    # Calculate statistics
-    total_reviews = len(professor_reviews)
-    avg_overall = sum(r.overall_rating for r in professor_reviews) / total_reviews
-    avg_difficulty = sum(r.difficulty_rating for r in professor_reviews) / total_reviews
-    avg_workload = sum(r.workload_rating for r in professor_reviews) / total_reviews
+    # Get reviews for rating distribution
+    reviews = review_storage.filter_reviews(professor_name=professor.name, skip=0, limit=10000)
 
     # Calculate rating distribution
     rating_distribution = {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0}
-    for review in professor_reviews:
+    for review in reviews:
         rating_key = str(int(review.overall_rating))
         if rating_key in rating_distribution:
             rating_distribution[rating_key] += 1
@@ -168,9 +144,11 @@ def get_professor_stats(
         "professor_id": professor_id,
         "professor_name": professor.name,
         "university": professor.university,
-        "total_reviews": total_reviews,
-        "average_overall_rating": round(avg_overall, 2),
-        "average_difficulty_rating": round(avg_difficulty, 2),
-        "average_workload_rating": round(avg_workload, 2),
+        "total_reviews": stats["review_count"],
+        "average_overall_rating": round(stats["avg_overall_rating"], 2) if stats["avg_overall_rating"] else None,
+        "average_difficulty_rating": (
+            round(stats["avg_difficulty_rating"], 2) if stats["avg_difficulty_rating"] else None
+        ),
+        "average_workload_rating": round(stats["avg_workload_rating"], 2) if stats["avg_workload_rating"] else None,
         "rating_distribution": rating_distribution,
     }

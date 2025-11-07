@@ -1,6 +1,9 @@
 line-length = 120
 indent-width = 4
 target-version = "py312"
+exclude = [
+    "alembic/versions",
+]
 
 [lint]
 select = [

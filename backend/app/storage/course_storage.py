@@ -1,20 +1,41 @@
-"""Course storage implementation."""
+"""Database storage for courses."""
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.course import Course as CourseModel
 from app.schemas.course import Course
-from app.storage.data_store import DataStore
 
 
 class CourseStorage:
-    """Storage for course data extracted from reviews."""
+    """Database storage for courses."""
 
-    def __init__(self, data_store: DataStore):
+    def __init__(self, session: Session):
         """
-        Initialize storage.
+        Initialize storage with database session.
 
         Args:
-            data_store: DataStore instance for data access
+            session: SQLAlchemy database session
         """
-        self._data_store = data_store
+        self._session = session
+
+    def get(self, course_id: int) -> Course | None:
+        """
+        Get a course by ID.
+
+        Args:
+            course_id: Course ID
+
+        Returns:
+            Course or None if not found
+        """
+        stmt = select(CourseModel).where(CourseModel.id == course_id)
+        db_course = self._session.scalar(stmt)
+
+        if db_course is None:
+            return None
+
+        return Course.model_validate(db_course)
 
     def list_courses(
         self,
@@ -36,36 +57,19 @@ class CourseStorage:
         Returns:
             List of courses with review counts and university names
         """
-        # Get all courses from data store
-        courses = self._data_store.get_all_courses()
-
-        # Get all universities to resolve names
-        universities = {u.id: u.name for u in self._data_store.get_all_universities()}
-
-        # Build course response objects with university names
-        course_responses = []
-        for course in courses:
-            university_name = universities.get(course.university_id, "Unknown")
-            # Create Course response object
-            course_response = Course(
-                id=course.id,
-                code=course.code,
-                university_id=course.university_id,
-                university=university_name,
-                review_count=course.review_count,
-            )
-            course_responses.append(course_response)
+        stmt = select(CourseModel)
 
         # Filter by code if provided (case-insensitive partial match)
         if code:
-            course_responses = [c for c in course_responses if code.lower() in c.code.lower()]
+            stmt = stmt.where(func.lower(CourseModel.code).contains(code.lower()))
 
         # Filter by university if provided (case-insensitive exact match)
         if university:
-            course_responses = [c for c in course_responses if c.university.lower() == university.lower()]
+            stmt = stmt.where(func.lower(CourseModel.university) == university.lower())
 
         # Sort by university then code for consistency
-        course_responses.sort(key=lambda c: (c.university.lower(), c.code.lower()))
+        stmt = stmt.order_by(CourseModel.university, CourseModel.code).offset(skip).limit(limit)
 
-        # Apply pagination
-        return course_responses[skip : skip + limit]
+        db_courses = self._session.scalars(stmt).all()
+
+        return [Course.model_validate(c) for c in db_courses]

@@ -24,7 +24,16 @@ RUN poetry install --only main --no-root
 COPY app app
 COPY README.md .
 
+# Copy Alembic files for database migrations
+COPY alembic alembic
+COPY alembic.ini .
+
+# Copy startup script
+COPY scripts/start.sh /app/scripts/start.sh
+RUN chmod +x /app/scripts/start.sh
+
 # Install the project
 RUN poetry install --only main
 
-CMD [ "sh", "-c", "poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-80}" ]
+# Use startup script that runs migrations before starting the app
+CMD ["/app/scripts/start.sh"]

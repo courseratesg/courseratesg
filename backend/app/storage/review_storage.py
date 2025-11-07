@@ -1,22 +1,25 @@
-"""In-memory storage for reviews."""
+"""Database storage for reviews."""
 
+from datetime import datetime
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.review import Review as ReviewModel
 from app.schemas.review import Review, ReviewCreate, ReviewUpdate
-from app.storage.data_store import DataStore
 
 
 class ReviewStorage:
-    """Simple in-memory storage for reviews."""
+    """Database storage for reviews using SQLAlchemy."""
 
-    """ Later to be replaced with persistent AWS RDS storage. """
-
-    def __init__(self, data_store: DataStore):
+    def __init__(self, session: Session):
         """
-        Initialize storage.
+        Initialize storage with database session.
 
         Args:
-            data_store: DataStore instance for data access
+            session: SQLAlchemy database session
         """
-        self._data_store = data_store
+        self._session = session
 
     def create(self, review_in: ReviewCreate, user_id: str | None = None) -> Review:
         """
@@ -29,7 +32,28 @@ class ReviewStorage:
         Returns:
             Created review
         """
-        return self._data_store.create_review(review_in, user_id=user_id)
+        # Convert schema to model
+        db_review = ReviewModel(
+            user_id=user_id,
+            overall_rating=review_in.overall_rating,
+            difficulty_rating=review_in.difficulty_rating,
+            workload_rating=review_in.workload_rating,
+            comment=review_in.comment,
+            semester=review_in.semester,
+            year=review_in.year,
+            course_code=review_in.course_code,
+            university_name=review_in.university,
+            professor_name=review_in.professor_name,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        self._session.add(db_review)
+        self._session.flush()  # Get ID without committing
+        self._session.refresh(db_review)
+
+        # Convert model back to schema
+        return Review.model_validate(db_review)
 
     def get(self, review_id: int) -> Review | None:
         """
@@ -41,7 +65,13 @@ class ReviewStorage:
         Returns:
             Review or None if not found
         """
-        return self._data_store.get_review(review_id)
+        stmt = select(ReviewModel).where(ReviewModel.id == review_id)
+        db_review = self._session.scalar(stmt)
+
+        if db_review is None:
+            return None
+
+        return Review.model_validate(db_review)
 
     def get_all(self, skip: int = 0, limit: int = 100) -> list[Review]:
         """
@@ -54,8 +84,10 @@ class ReviewStorage:
         Returns:
             List of reviews
         """
-        all_reviews = self._data_store.get_all_reviews()
-        return all_reviews[skip : skip + limit]
+        stmt = select(ReviewModel).order_by(ReviewModel.created_at.desc()).offset(skip).limit(limit)
+        db_reviews = self._session.scalars(stmt).all()
+
+        return [Review.model_validate(r) for r in db_reviews]
 
     def update(self, review_id: int, review_in: ReviewUpdate) -> Review | None:
         """
@@ -68,7 +100,24 @@ class ReviewStorage:
         Returns:
             Updated review or None if not found
         """
-        return self._data_store.update_review(review_id, review_in)
+        stmt = select(ReviewModel).where(ReviewModel.id == review_id)
+        db_review = self._session.scalar(stmt)
+
+        if db_review is None:
+            return None
+
+        # Update only provided fields
+        update_data = review_in.model_dump(exclude_unset=True)
+
+        for field, value in update_data.items():
+            setattr(db_review, field, value)
+
+        db_review.updated_at = datetime.utcnow()
+
+        self._session.flush()
+        self._session.refresh(db_review)
+
+        return Review.model_validate(db_review)
 
     def delete(self, review_id: int) -> bool:
         """
@@ -80,7 +129,16 @@ class ReviewStorage:
         Returns:
             True if deleted, False if not found
         """
-        return self._data_store.delete_review(review_id)
+        stmt = select(ReviewModel).where(ReviewModel.id == review_id)
+        db_review = self._session.scalar(stmt)
+
+        if db_review is None:
+            return False
+
+        self._session.delete(db_review)
+        self._session.flush()
+
+        return True
 
     def filter_reviews(
         self,
@@ -93,35 +151,41 @@ class ReviewStorage:
         limit: int = 100,
     ) -> list[Review]:
         """
-        Filter reviews by various criteria.
+        Filter reviews by various criteria with pagination support.
 
         Args:
-            professor_name: Professor name to filter by
-            course_code: Course code to filter by
-            university: University name to filter by
+            professor_name: Professor name to filter by (case-insensitive)
+            course_code: Course code to filter by (case-insensitive)
+            university: University name to filter by (case-insensitive)
             user_id: User ID (Cognito sub) to filter by (for "my reviews")
-            skip: Number of reviews to skip
-            limit: Maximum number of reviews to return
+            skip: Number of reviews to skip (pagination)
+            limit: Maximum number of reviews to return (pagination)
 
         Returns:
-            List of filtered reviews
+            List of filtered reviews with pagination applied
         """
-        filtered = self._data_store.get_all_reviews()
+        stmt = select(ReviewModel)
 
+        # Apply filters
         if professor_name:
-            filtered = [r for r in filtered if r.professor_name and r.professor_name.lower() == professor_name.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.professor_name) == professor_name.lower())
 
         if course_code:
-            filtered = [r for r in filtered if r.course_code.lower() == course_code.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.course_code) == course_code.lower())
 
         if university:
-            filtered = [r for r in filtered if r.university.lower() == university.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.university_name) == university.lower())
 
         if user_id is not None:
-            # Filter by user_id (Cognito sub)
-            filtered = [r for r in filtered if r.user_id == user_id]
+            # Filter by user_id (Cognito sub) for "my reviews"
+            stmt = stmt.where(ReviewModel.user_id == user_id)
 
-        return filtered[skip : skip + limit]
+        # Order by most recent first
+        stmt = stmt.order_by(ReviewModel.created_at.desc()).offset(skip).limit(limit)
+
+        db_reviews = self._session.scalars(stmt).all()
+
+        return [Review.model_validate(r) for r in db_reviews]
 
     def get_stats(
         self,
@@ -133,6 +197,8 @@ class ReviewStorage:
         """
         Get aggregated statistics for reviews matching criteria.
 
+        Uses database aggregation for efficiency.
+
         Args:
             professor_name: Professor name to filter by
             course_code: Course code to filter by
@@ -141,28 +207,29 @@ class ReviewStorage:
         Returns:
             Dictionary with average ratings and count
         """
-        filtered = self._data_store.get_all_reviews()
+        # Build query with filters
+        stmt = select(
+            func.avg(ReviewModel.overall_rating).label("avg_overall"),
+            func.avg(ReviewModel.difficulty_rating).label("avg_difficulty"),
+            func.avg(ReviewModel.workload_rating).label("avg_workload"),
+            func.count(ReviewModel.id).label("count"),
+        )
 
+        # Apply filters
         if professor_name:
-            filtered = [r for r in filtered if r.professor_name and r.professor_name.lower() == professor_name.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.professor_name) == professor_name.lower())
 
         if course_code:
-            filtered = [r for r in filtered if r.course_code.lower() == course_code.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.course_code) == course_code.lower())
 
         if university:
-            filtered = [r for r in filtered if r.university.lower() == university.lower()]
+            stmt = stmt.where(func.lower(ReviewModel.university_name) == university.lower())
 
-        if not filtered:
-            return {
-                "avg_overall_rating": None,
-                "avg_difficulty_rating": None,
-                "avg_workload_rating": None,
-                "review_count": 0,
-            }
+        result = self._session.execute(stmt).one()
 
         return {
-            "avg_overall_rating": sum(r.overall_rating for r in filtered) / len(filtered),
-            "avg_difficulty_rating": sum(r.difficulty_rating for r in filtered) / len(filtered),
-            "avg_workload_rating": sum(r.workload_rating for r in filtered) / len(filtered),
-            "review_count": len(filtered),
+            "avg_overall_rating": float(result.avg_overall) if result.avg_overall else None,
+            "avg_difficulty_rating": float(result.avg_difficulty) if result.avg_difficulty else None,
+            "avg_workload_rating": float(result.avg_workload) if result.avg_workload else None,
+            "review_count": result.count,
         }
