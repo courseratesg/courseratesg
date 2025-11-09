@@ -5,7 +5,7 @@ from typing import Annotated
 
 import jwt
 import requests
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import HTTPException, Header, status
 from jwt.algorithms import RSAAlgorithm
 
 from app.api.v1.depends.settings import get_app_settings
@@ -60,7 +60,7 @@ def get_cognito_public_keys() -> list[dict]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch authentication keys",
-        )
+        ) from e
 
 
 def verify_cognito_token(token: str) -> dict:
@@ -118,26 +118,26 @@ def verify_cognito_token(token: str) -> dict:
 
         return payload
 
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Token verification error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token verification failed",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 async def get_current_user(
@@ -174,12 +174,12 @@ async def get_current_user(
         scheme, token = authorization.split(maxsplit=1)
         if scheme.lower() != "bearer":
             raise ValueError("Invalid scheme")
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization header format. Expected: Bearer <token>",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     # Verify token
     payload = verify_cognito_token(token)
