@@ -24,6 +24,16 @@ resource "aws_iam_role_policy_attachment" "amplify" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmplifyBackendDeployFullAccess"
 }
 
+locals {
+  amplify_environment_variables = {
+    VITE_USE_MOCK_API            = "false"
+    VITE_API_BASE_URL            = "https://api.${var.domain_name}"
+    VITE_AWS_REGION              = var.aws_region
+    VITE_AWS_USER_POOL_ID        = aws_cognito_user_pool.main.id
+    VITE_AWS_USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.main.id
+  }
+}
+
 resource "aws_amplify_app" "main" {
   tags = {
     Name = "${var.project_name}-amplify"
@@ -60,13 +70,7 @@ resource "aws_amplify_app" "main" {
     target = "/index.html"
   }
 
-  environment_variables = {
-    VITE_USE_MOCK_API            = false
-    VITE_API_BASE_URL            = "https://api.${var.domain_name}"
-    VITE_AWS_REGION              = var.aws_region
-    VITE_AWS_USER_POOL_ID        = aws_cognito_user_pool.main.id
-    VITE_AWS_USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.main.id
-  }
+  environment_variables = local.amplify_environment_variables
 
   enable_branch_auto_build    = true
   enable_auto_branch_creation = false
@@ -80,6 +84,8 @@ resource "aws_amplify_branch" "main" {
 
   framework = "React"
   stage     = "PRODUCTION"
+
+  environment_variables = local.amplify_environment_variables
 }
 
 resource "aws_amplify_domain_association" "main" {
