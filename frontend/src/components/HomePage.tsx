@@ -114,7 +114,6 @@ function CourseResultCard({ course, onClick }: { course: Course; onClick: () => 
               <BookOpen className="h-5 w-5 text-green-600" />
               <span>{course.code}</span>
             </CardTitle>
-            <CardDescription>{course.name ?? course.code}</CardDescription>
             <CardDescription className="text-xs">{course.university}</CardDescription>
           </div>
           <Badge variant="secondary">{stats.totalReviews} reviews</Badge>
@@ -197,6 +196,7 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
             <button
               onClick={() => {
                 setSearchType('professor');
+                setQuery('');
                 setSearchPerformed(false);
               }}
               className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
@@ -211,6 +211,7 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
             <button
               onClick={() => {
                 setSearchType('course');
+                setQuery('');
                 setSearchPerformed(false);
               }}
               className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
@@ -352,7 +353,7 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
                   }
                 }}
               >
-                Submit Your First Review
+                Submit Review
               </Button>
             </CardContent>
           </Card>

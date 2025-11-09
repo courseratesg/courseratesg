@@ -71,26 +71,6 @@ export function CourseProfilePage({ courseCode, universityName }: CourseProfileP
     });
   };
 
-  const getCourseName = () => {
-    // Get the most common course name from reviews
-    const nameCount = new Map();
-    allReviews.forEach(review => {
-      const name = review.courseName;
-      nameCount.set(name, (nameCount.get(name) || 0) + 1);
-    });
-    
-    let mostCommonName = '';
-    let maxCount = 0;
-    nameCount.forEach((count, name) => {
-      if (count > maxCount) {
-        maxCount = count;
-        mostCommonName = name;
-      }
-    });
-    
-    return mostCommonName || courseCode;
-  };
-
   const getUniqueProfessors = () => {
     const professors = new Set<string>();
     allReviews.forEach(review => {
@@ -132,7 +112,6 @@ export function CourseProfilePage({ courseCode, universityName }: CourseProfileP
           </div>
           <div className="flex-1">
             <h1 className="text-3xl mb-2 text-gray-900">{courseCode}</h1>
-            <p className="text-xl text-gray-700 mb-2">{getCourseName()}</p>
             <div className="flex items-center space-x-2 mb-4">
               <Building className="h-5 w-5 text-gray-500" />
               <span className="text-gray-600">{universityName}</span>

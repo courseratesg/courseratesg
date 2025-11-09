@@ -92,7 +92,6 @@ function mapApiReviewToReview(apiReview: ApiReview): Review {
     id: apiReview.id.toString(),
     userId: '', // Not provided by API
     courseCode: apiReview.course_code,
-    courseName: apiReview.course_code, // Name not provided; fall back to code
     yearTaken: apiReview.year ? `AY${apiReview.year}/${apiReview.year + 1}` : '',
     semester: apiReview.semester,
     professorName: apiReview.professor_name ?? '',
@@ -392,7 +391,6 @@ export interface CourseStats {
 
 export interface CreateReviewPayload {
   courseCode: string;
-  courseName: string;
   yearTaken: string;
   semester?: string;
   professorName: string;
@@ -450,7 +448,6 @@ const updateReviewInStorage = (
   const updatedReview = {
     ...userReviews[index],
     ...(updates.courseCode && { courseCode: updates.courseCode.trim().toUpperCase() }),
-    ...(updates.courseName && { courseName: updates.courseName.trim() }),
     ...(updates.yearTaken && { yearTaken: updates.yearTaken }),
     ...(updates.semester !== undefined && { semester: updates.semester }),
     ...(updates.professorName && { professorName: updates.professorName.trim() }),
@@ -776,7 +773,6 @@ export async function createReview(payload: CreateReviewPayload, userId: string)
       id: `review-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId,
       courseCode: payload.courseCode.trim().toUpperCase(),
-      courseName: payload.courseName.trim(),
       yearTaken: payload.yearTaken,
       semester: payload.semester,
       professorName: payload.professorName.trim(),

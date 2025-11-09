@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, BookOpen, User, Building, Calendar, Award, AlertCircle } from 'lucide-react';
+import { Star, BookOpen, User, Building, Calendar, Award, AlertCircle, ChevronsUpDown, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -8,16 +8,19 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { toast } from 'sonner';
-import { createReview, getProfessors, getUniversities, getCourses, generateAcademicYearOptions, getCurrentAcademicYear, SEMESTER_OPTIONS } from '../services/api';
+import { createReview, getProfessors, getUniversities, generateAcademicYearOptions, getCurrentAcademicYear, SEMESTER_OPTIONS } from '../services/api';
 import type { User as UserType } from '../App';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { cn } from './ui/utils';
 
 interface SubmitReviewPageProps {
   currentUser: UserType;
+  onReviewSubmitted?: () => void;
 }
 
 interface ReviewForm {
   courseCode: string;
-  courseName: string;
   yearTaken: string;
   semester: string;
   professorName: string;
@@ -32,10 +35,9 @@ interface ReviewForm {
 
 const GRADE_OPTIONS = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F', 'Pass', 'Fail', 'Withdraw'];
 
-export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
+export function SubmitReviewPage({ currentUser, onReviewSubmitted }: SubmitReviewPageProps) {
   const [form, setForm] = useState<ReviewForm>({
     courseCode: '',
-    courseName: '',
     yearTaken: getCurrentAcademicYear(),
     semester: '',
     professorName: '',
@@ -50,6 +52,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddProfessorDialogOpen, setIsAddProfessorDialogOpen] = useState(false);
+  const [isProfessorPickerOpen, setIsProfessorPickerOpen] = useState(false);
   const [newProfessorForm, setNewProfessorForm] = useState({
     professorName: '',
     universityName: ''
@@ -57,18 +60,14 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
 
   const [professors, setProfessors] = useState<string[]>([]);
   const [universities, setUniversities] = useState<string[]>([]);
-  const [courseCodes, setCourseCodes] = useState<string[]>([]);
-
   React.useEffect(() => {
     const loadDropdownData = async () => {
-      const [profList, uniList, courseList] = await Promise.all([
+      const [profList, uniList] = await Promise.all([
         getProfessors(),
         getUniversities(),
-        getCourses()
       ]);
       setProfessors(profList);
       setUniversities(uniList);
-      setCourseCodes(courseList);
     };
     loadDropdownData();
   }, []);
@@ -83,7 +82,6 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
 
   const isFormValid = () => {
     return form.courseCode.trim() &&
-           form.courseName.trim() &&
            form.yearTaken &&
            form.professorName.trim() &&
            form.universityName.trim() &&
@@ -104,10 +102,9 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
     setIsSubmitting(true);
 
     try {
-      const newReview = await createReview(
+      await createReview(
         {
           courseCode: form.courseCode,
-          courseName: form.courseName,
           yearTaken: form.yearTaken,
           semester: form.semester || undefined,
           professorName: form.professorName,
@@ -123,11 +120,13 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
       );
       
       toast.success('Review submitted successfully!');
+      if (onReviewSubmitted) {
+        onReviewSubmitted();
+      }
       
       // Reset form
       setForm({
         courseCode: '',
-        courseName: '',
         yearTaken: getCurrentAcademicYear(),
         semester: '',
         professorName: '',
@@ -141,14 +140,12 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
       });
 
       // Refresh dropdown data
-      const [profList, uniList, courseList] = await Promise.all([
+      const [profList, uniList] = await Promise.all([
         getProfessors(),
-        getUniversities(),
-        getCourses()
+        getUniversities()
       ]);
       setProfessors(profList);
       setUniversities(uniList);
-      setCourseCodes(courseList);
 
     } catch (error) {
       toast.error('Failed to submit review. Please try again.');
@@ -157,21 +154,16 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
     }
   };
 
-  const handleAddProfessorSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newProfessorForm.professorName.trim() || !newProfessorForm.universityName.trim()) {
-      toast.error('Please fill in both professor name and university');
-      return;
+  const professorRequestMailto = React.useMemo(() => {
+    const name = newProfessorForm.professorName.trim();
+    const university = newProfessorForm.universityName.trim();
+    if (!name || !university) {
+      return null;
     }
-
-    // In a real app, this would submit to an admin queue
-    toast.success('Professor addition request submitted! Admin will review and add the professor.');
-    
-    // Reset the form and close dialog
-    setNewProfessorForm({ professorName: '', universityName: '' });
-    setIsAddProfessorDialogOpen(false);
-  };
+    const subject = encodeURIComponent('Request to add professor - CourseRateSG');
+    const body = encodeURIComponent(`Professor Name: ${name}\nUniversity: ${university}`);
+    return `mailto:admin@courseratesg.xyz?subject=${subject}&body=${body}`;
+  }, [newProfessorForm.professorName, newProfessorForm.universityName]);
 
   const renderStarRating = (
     field: 'overallRating' | 'difficultyRating' | 'workloadRating',
@@ -238,19 +230,6 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                   placeholder="e.g., CS101, MATH220"
                   value={form.courseCode}
                   onChange={(e) => handleInputChange('courseCode', e.target.value.toUpperCase())}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="courseName" className="flex items-center space-x-2">
-                  <span>Course Name *</span>
-                </Label>
-                <Input
-                  id="courseName"
-                  placeholder="e.g., Introduction to Computer Science"
-                  value={form.courseName}
-                  onChange={(e) => handleInputChange('courseName', e.target.value)}
                   required
                 />
               </div>
@@ -358,24 +337,54 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="professorName" className="flex items-center space-x-2">
+                <Label className="flex items-center space-x-2">
                   <span>Professor Name *</span>
                 </Label>
-                <Select
-                  value={form.professorName}
-                  onValueChange={(value: string) => handleInputChange('professorName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select or type professor name" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {professors.map((professor) => (
-                      <SelectItem key={professor} value={professor}>
-                        {professor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={isProfessorPickerOpen} onOpenChange={setIsProfessorPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isProfessorPickerOpen}
+                      className="w-full justify-between"
+                    >
+                      {form.professorName ? (
+                        <span className="truncate">{form.professorName}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Select or search professor</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search professor..." />
+                      <CommandEmpty>No professor found.</CommandEmpty>
+                      <CommandList>
+                        <CommandGroup>
+                          {professors.map((professor) => (
+                            <CommandItem
+                              key={professor}
+                              value={professor}
+                              onSelect={(currentValue: string) => {
+                                handleInputChange('professorName', currentValue);
+                                setIsProfessorPickerOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  form.professorName === professor ? 'opacity-100' : 'opacity-0'
+                                )}
+                              />
+                              {professor}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <Dialog open={isAddProfessorDialogOpen} onOpenChange={setIsAddProfessorDialogOpen}>
                   <DialogTrigger asChild>
                     <button
@@ -386,14 +395,17 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                       <span>Professor not found? Let the admin know!</span>
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Request New Professor</DialogTitle>
                       <DialogDescription>
                         Can't find your professor? Let us know and we'll add them to the system.
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddProfessorSubmit} className="space-y-4">
+                    <form
+                      onSubmit={(e) => e.preventDefault()}
+                      className="space-y-4"
+                    >
                       <div className="space-y-2">
                         <Label htmlFor="newProfessorName">Professor Name *</Label>
                         <Input
@@ -430,8 +442,20 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                         >
                           Cancel
                         </Button>
-                        <Button type="submit">
-                          Submit Request
+                        <Button
+                          asChild
+                          disabled={!professorRequestMailto}
+                        >
+                          <a
+                            href={professorRequestMailto || undefined}
+                            onClick={() => {
+                              if (professorRequestMailto) {
+                                setIsAddProfessorDialogOpen(false);
+                              }
+                            }}
+                          >
+                            Submit Request
+                          </a>
                         </Button>
                       </div>
                     </form>
@@ -449,7 +473,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                   onValueChange={(value: string) => handleInputChange('universityName', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select or type university name" />
+                    <SelectValue placeholder="Select university" />
                   </SelectTrigger>
                   <SelectContent>
                     {universities.map((university) => (
@@ -533,7 +557,6 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                 if (confirm('Are you sure you want to clear the form?')) {
                   setForm({
                     courseCode: '',
-                    courseName: '',
                     yearTaken: getCurrentAcademicYear(),
                     semester: '',
                     professorName: '',

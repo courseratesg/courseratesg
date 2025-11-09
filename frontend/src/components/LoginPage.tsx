@@ -13,6 +13,25 @@ interface LoginPageProps {
   onNavigateHome?: () => void;
 }
 
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters long.';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter.';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one uppercase letter.';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must include at least one number.';
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return 'Password must include at least one symbol.';
+  }
+  return null;
+}
+
 export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -50,6 +69,13 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
     setIsLoading(true);
     setError(null);
     setStatusMessage(null);
+
+    const passwordError = validatePassword(signUpPassword);
+    if (passwordError) {
+      setError(passwordError);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const result = await authService.signUp(
@@ -210,6 +236,12 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
                   required
                   disabled={isLoading}
                 />
+                <ul className="text-xs text-gray-500 space-y-1 list-disc list-inside">
+                  <li>At least 8 characters</li>
+                  <li>Contains lowercase and uppercase letters</li>
+                  <li>Contains a number</li>
+                  <li>Contains a symbol</li>
+                </ul>
               </div>
               <Button
                 type="submit"

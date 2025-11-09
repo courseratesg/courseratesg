@@ -295,11 +295,15 @@ class CognitoAuthService {
         if (payload.email) {
           user.email = payload.email;
         }
-        if (payload.name) {
-          user.name = payload.name;
+        let displayName = user.name;
+        if (payload.nickname) {
+          displayName = payload.nickname;
+        } else if (payload.name) {
+          displayName = payload.name;
         } else if (payload.given_name || payload.family_name) {
-          user.name = [payload.given_name, payload.family_name].filter(Boolean).join(' ');
+          displayName = [payload.given_name, payload.family_name].filter(Boolean).join(' ');
         }
+        user.name = displayName;
       }
 
       return user;

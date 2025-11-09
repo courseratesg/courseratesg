@@ -22,7 +22,6 @@ const GRADE_OPTIONS = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 
 export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReviewDialogProps) {
   const [form, setForm] = useState({
     courseCode: '',
-    courseName: '',
     yearTaken: '',
     semester: '',
     professorName: '',
@@ -55,7 +54,6 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
     if (review) {
       setForm({
         courseCode: review.courseCode,
-        courseName: review.courseName,
         yearTaken: review.yearTaken,
         semester: review.semester || '',
         professorName: review.professorName,
@@ -80,7 +78,6 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
 
   const isFormValid = () => {
     return form.courseCode.trim() &&
-           form.courseName.trim() &&
            form.yearTaken &&
            form.professorName.trim() &&
            form.universityName.trim() &&
@@ -101,7 +98,6 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
     try {
       await updateReview(review.id, {
         courseCode: form.courseCode.trim().toUpperCase(),
-        courseName: form.courseName.trim(),
         yearTaken: form.yearTaken,
         semester: form.semester || undefined,
         professorName: form.professorName.trim(),
@@ -167,16 +163,6 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
                 id="edit-courseCode"
                 value={form.courseCode}
                 onChange={(e) => handleInputChange('courseCode', e.target.value.toUpperCase())}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-courseName">Course Name *</Label>
-              <Input
-                id="edit-courseName"
-                value={form.courseName}
-                onChange={(e) => handleInputChange('courseName', e.target.value)}
                 required
               />
             </div>
