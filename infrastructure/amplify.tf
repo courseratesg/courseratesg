@@ -60,10 +60,10 @@ resource "aws_amplify_app" "main" {
   }
 
   environment_variables = {
-    VITE_API_BASE_URL             = "https://api.${var.domain_name}"
-    VITE_AWS_REGION               = var.aws_region
-    VITE_AWS_USER_POOL_ID         = aws_cognito_user_pool.main.id
-    VITE_AWS_USER_POOL_CLIENT_ID  = aws_cognito_user_pool_client.main.id
+    VITE_API_BASE_URL            = "https://api.${var.domain_name}"
+    VITE_AWS_REGION              = var.aws_region
+    VITE_AWS_USER_POOL_ID        = aws_cognito_user_pool.main.id
+    VITE_AWS_USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.main.id
   }
 
   enable_branch_auto_build    = true
