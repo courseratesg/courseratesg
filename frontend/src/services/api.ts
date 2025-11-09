@@ -3,14 +3,31 @@
 
 import type { Review } from '../App';
 import { mockReviews, mockUniversities, mockProfessors, mockCourses, SEMESTER_OPTIONS } from '../components/mockData';
+import type { components } from '../types/api';
 
 // Re-export SEMESTER_OPTIONS so components don't need to import directly from mockData
 export { SEMESTER_OPTIONS };
 
 // Configuration: Use mock data by default, set VITE_USE_MOCK_API=false to use real API
 const USE_MOCK_API = (import.meta.env.VITE_USE_MOCK_API ?? 'true') !== 'false'; // Defaults to true
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://api.courseratesg.xyz/api/v1';
 const MOCK_DELAY = 300; // Simulate network delay
+
+// ==================== API SCHEMA TYPES ====================
+
+type ApiReview = components['schemas']['Review'];
+type ApiReviewCreate = components['schemas']['ReviewCreate'];
+type ApiReviewUpdate = components['schemas']['ReviewUpdate'];
+type ApiProfessor = components['schemas']['Professor'];
+type ApiCourse = components['schemas']['Course'];
+type ApiUniversity = components['schemas']['University'];
+type ApiReviewStats = {
+  average_overall_rating?: number | null;
+  average_difficulty_rating?: number | null;
+  average_workload_rating?: number | null;
+  review_count?: number | null;
+};
 
 // Helper to get authentication token (defined here to avoid circular dependency)
 async function getAuthTokenForRequest(): Promise<string | null> {
@@ -29,27 +46,304 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = await getAuthTokenForRequest();
-  
-  const headers: HeadersInit = {
+
+  const { headers: optionHeaders, ...restOptions } = options;
+  const headers = new Headers({
     'Content-Type': 'application/json',
-    ...options.headers,
-  };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  });
+
+  if (optionHeaders) {
+    const overrideHeaders = new Headers(optionHeaders);
+    overrideHeaders.forEach((value, key) => headers.set(key, value));
   }
-  
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const response = await fetch(url, {
-    ...options,
+    ...restOptions,
     headers,
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
     throw new Error(errorData.message || `API request failed with status ${response.status}`);
   }
-  
+
   return response.json();
+}
+
+// Helper to build query strings safely
+function buildQueryString(params: Record<string, string | number | boolean | null | undefined>): string {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
+function mapApiReviewToReview(apiReview: ApiReview): Review {
+  return {
+    id: apiReview.id.toString(),
+    userId: '', // Not provided by API
+    courseCode: apiReview.course_code,
+    courseName: apiReview.course_code, // Name not provided; fall back to code
+    yearTaken: apiReview.year ? `AY${apiReview.year}/${apiReview.year + 1}` : '',
+    semester: apiReview.semester,
+    professorName: apiReview.professor_name ?? '',
+    universityName: apiReview.university,
+    overallRating: apiReview.overall_rating,
+    difficultyRating: apiReview.difficulty_rating,
+    workloadRating: apiReview.workload_rating,
+    reviewText: apiReview.comment ?? '',
+    gradeReceived: undefined,
+    gradeExpected: undefined,
+    createdAt: new Date(apiReview.created_at),
+  };
+}
+
+function pickStatValue(stats: unknown, keys: string[]): number | undefined {
+  if (!stats || typeof stats !== 'object') {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    if (key in stats) {
+      const value = (stats as Record<string, unknown>)[key];
+      if (typeof value === 'number') {
+        return value;
+      }
+      if (value !== null && value !== undefined) {
+        const numeric = Number(value);
+        if (!Number.isNaN(numeric)) {
+          return numeric;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function mapStatsResponseToProfessorStats(stats: ApiReviewStats | null | undefined): ProfessorStats {
+  const averageOverall =
+    pickStatValue(stats, [
+      'average_overall_rating',
+      'avg_overall_rating',
+      'averageTeaching',
+      'average_overall',
+      'avg_overall',
+    ]) ?? 0;
+  const averageDifficulty =
+    pickStatValue(stats, [
+      'average_difficulty_rating',
+      'avg_difficulty_rating',
+      'averageDifficulty',
+      'average_difficulty',
+      'avg_difficulty',
+    ]) ?? 0;
+  const averageWorkload =
+    pickStatValue(stats, [
+      'average_workload_rating',
+      'avg_workload_rating',
+      'average_workload',
+      'avg_workload',
+      'averageWorkload',
+    ]) ?? 0;
+  const totalReviews =
+    pickStatValue(stats, ['review_count', 'total_reviews', 'totalReviews']) ?? 0;
+
+  return {
+    averageOverall,
+    averageDifficulty,
+    averageWorkload,
+    totalReviews,
+  };
+}
+
+function mapStatsResponseToCourseStats(stats: ApiReviewStats | null | undefined): CourseStats {
+  const averageDifficulty =
+    pickStatValue(stats, [
+      'average_difficulty_rating',
+      'avg_difficulty_rating',
+      'average_difficulty',
+      'avg_difficulty',
+      'averageDifficulty',
+    ]) ?? 0;
+  const averageWorkload =
+    pickStatValue(stats, [
+      'average_workload_rating',
+      'avg_workload_rating',
+      'average_workload',
+      'avg_workload',
+      'averageWorkload',
+    ]) ?? 0;
+  const averageOverall =
+    pickStatValue(stats, [
+      'average_overall_rating',
+      'avg_overall_rating',
+      'average_overall',
+      'avg_overall',
+      'averageTeaching',
+    ]) ?? 0;
+  const totalReviews =
+    pickStatValue(stats, ['review_count', 'total_reviews', 'totalReviews']) ?? 0;
+
+  return {
+    averageDifficulty,
+    averageWorkload,
+    averageOverall,
+    totalReviews,
+  };
+}
+
+function parseAcademicYearToYear(academicYear: string | undefined): number | null {
+  if (!academicYear) return null;
+  const match = academicYear.match(/AY\s*(\d{4})/i) || academicYear.match(/AY?(\d{4})/i);
+  if (match) {
+    const year = Number.parseInt(match[1], 10);
+    return Number.isNaN(year) ? null : year;
+  }
+  const numeric = Number.parseInt(academicYear, 10);
+  return Number.isNaN(numeric) ? null : numeric;
+}
+
+function mapCreatePayloadToApi(payload: CreateReviewPayload): ApiReviewCreate {
+  const year = parseAcademicYearToYear(payload.yearTaken);
+  return {
+    overall_rating: payload.overallRating,
+    difficulty_rating: payload.difficultyRating,
+    workload_rating: payload.workloadRating,
+    comment: payload.reviewText || null,
+    semester: payload.semester ?? 'Semester 1',
+    year: year ?? new Date().getFullYear(),
+    course_code: payload.courseCode.trim().toUpperCase(),
+    university: payload.universityName.trim(),
+    professor_name: payload.professorName ? payload.professorName.trim() : null,
+  };
+}
+
+function mapUpdatePayloadToApi(updates: Partial<CreateReviewPayload>): ApiReviewUpdate {
+  const apiUpdates: ApiReviewUpdate = {};
+
+  if (updates.overallRating !== undefined) {
+    apiUpdates.overall_rating = updates.overallRating;
+  }
+  if (updates.difficultyRating !== undefined) {
+    apiUpdates.difficulty_rating = updates.difficultyRating;
+  }
+  if (updates.workloadRating !== undefined) {
+    apiUpdates.workload_rating = updates.workloadRating;
+  }
+  if (updates.reviewText !== undefined) {
+    apiUpdates.comment = updates.reviewText || null;
+  }
+  if (updates.semester !== undefined) {
+    apiUpdates.semester = updates.semester || null;
+  }
+  if (updates.yearTaken !== undefined) {
+    const year = parseAcademicYearToYear(updates.yearTaken);
+    if (year !== null) {
+      apiUpdates.year = year;
+    }
+  }
+  if (updates.professorName !== undefined) {
+    apiUpdates.professor_name = updates.professorName ? updates.professorName.trim() : null;
+  }
+
+  return apiUpdates;
+}
+
+function mapApiCourseToCourse(apiCourse: ApiCourse): Course {
+  return {
+    id: apiCourse.id,
+    code: apiCourse.code,
+    university: apiCourse.university,
+    reviewCount: apiCourse.review_count,
+    name: (apiCourse as ApiCourse & { name?: string }).name ?? apiCourse.code,
+  };
+}
+
+function mapApiProfessorToProfessor(apiProfessor: ApiProfessor): Professor {
+  return {
+    id: apiProfessor.id,
+    name: apiProfessor.name,
+    university: apiProfessor.university,
+    reviewCount: (apiProfessor as ApiProfessor & { review_count?: number }).review_count ?? 0,
+  };
+}
+
+function isCourseLike(value: unknown): value is ApiCourse {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'code' in value &&
+    typeof (value as { code?: unknown }).code === 'string'
+  );
+}
+
+function isProfessorLike(value: unknown): value is ApiProfessor {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'name' in value &&
+    typeof (value as { name?: unknown }).name === 'string'
+  );
+}
+
+function extractArrayFromResponse<T>(
+  response: unknown,
+  guard: (value: unknown) => value is T,
+  keyHints: string[]
+): T[] {
+  const queue: unknown[] = [response];
+  const visited = new Set<unknown>();
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (current === null || current === undefined) {
+      continue;
+    }
+
+    if (visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      const filtered = current.filter(guard) as T[];
+      if (filtered.length > 0) {
+        return filtered;
+      }
+      // Continue scanning nested arrays for guarded values
+      current.forEach(item => queue.push(item));
+      continue;
+    }
+
+    if (typeof current === 'object') {
+      const record = current as Record<string, unknown>;
+
+      keyHints.forEach(key => {
+        if (key in record) {
+          queue.push(record[key]);
+        }
+      });
+
+      Object.values(record).forEach(value => {
+        if (value && typeof value === 'object') {
+          queue.push(value);
+        }
+      });
+    }
+  }
+
+  return [];
 }
 
 // Convert mock data from JSON-like format (with ISO string dates) to Review objects (with Date objects)
@@ -62,21 +356,28 @@ const getMockReviewsAsReviews = (): Review[] => {
 
 // Types
 export interface Professor {
+  id: number;
   name: string;
+  university: string;
+  reviewCount: number;
 }
 
 export interface Course {
+  id: number;
   code: string;
-  name: string;
   university: string;
+  reviewCount: number;
+  name?: string;
 }
 
 export interface University {
+  id: number;
   name: string;
+  reviewCount: number;
 }
 
 export interface ProfessorStats {
-  averageTeaching: number;
+  averageOverall: number;
   averageDifficulty: number;
   averageWorkload?: number;
   totalReviews: number;
@@ -85,7 +386,7 @@ export interface ProfessorStats {
 export interface CourseStats {
   averageDifficulty: number;
   averageWorkload: number;
-  averageTeaching?: number;
+  averageOverall?: number;
   totalReviews: number;
 }
 
@@ -96,7 +397,7 @@ export interface CreateReviewPayload {
   semester?: string;
   professorName: string;
   universityName: string;
-  teachingRating: number;
+  overallRating: number;
   difficultyRating: number;
   workloadRating: number;
   reviewText: string;
@@ -112,10 +413,14 @@ const getAllReviews = (): Review[] => {
   const savedReviews = localStorage.getItem('userReviews');
   if (savedReviews) {
     const parsedReviews = JSON.parse(savedReviews);
-    return [...getMockReviewsAsReviews(), ...parsedReviews.map((r: any) => ({
-      ...r,
-      createdAt: new Date(r.createdAt)
-    }))];
+    return [
+      ...getMockReviewsAsReviews(),
+      ...parsedReviews.map((r: any) => ({
+        ...r,
+        overallRating: r.overallRating ?? r.teachingRating ?? 0,
+        createdAt: new Date(r.createdAt)
+      }))
+    ];
   }
   return getMockReviewsAsReviews();
 };
@@ -128,17 +433,40 @@ const saveReview = (review: Review): void => {
   localStorage.setItem('userReviews', JSON.stringify(userReviews));
 };
 
-const updateReviewInStorage = (reviewId: string, updatedReview: Partial<Review>): void => {
+const updateReviewInStorage = (
+  reviewId: string,
+  updates: Partial<CreateReviewPayload>
+): Review | null => {
   const savedReviews = localStorage.getItem('userReviews');
-  if (!savedReviews) return;
-  
+  if (!savedReviews) return null;
+
   const userReviews = JSON.parse(savedReviews);
   const index = userReviews.findIndex((r: Review) => r.id === reviewId);
-  
-  if (index !== -1) {
-    userReviews[index] = { ...userReviews[index], ...updatedReview };
-    localStorage.setItem('userReviews', JSON.stringify(userReviews));
+
+  if (index === -1) {
+    return null;
   }
+
+  const updatedReview = {
+    ...userReviews[index],
+    ...(updates.courseCode && { courseCode: updates.courseCode.trim().toUpperCase() }),
+    ...(updates.courseName && { courseName: updates.courseName.trim() }),
+    ...(updates.yearTaken && { yearTaken: updates.yearTaken }),
+    ...(updates.semester !== undefined && { semester: updates.semester }),
+    ...(updates.professorName && { professorName: updates.professorName.trim() }),
+    ...(updates.universityName && { universityName: updates.universityName.trim() }),
+    ...(updates.overallRating !== undefined && { overallRating: updates.overallRating }),
+    ...(updates.difficultyRating !== undefined && { difficultyRating: updates.difficultyRating }),
+    ...(updates.workloadRating !== undefined && { workloadRating: updates.workloadRating }),
+    ...(updates.reviewText && { reviewText: updates.reviewText.trim() }),
+    ...(updates.gradeReceived !== undefined && { gradeReceived: updates.gradeReceived }),
+    ...(updates.gradeExpected !== undefined && { gradeExpected: updates.gradeExpected })
+  };
+
+  userReviews[index] = updatedReview;
+  localStorage.setItem('userReviews', JSON.stringify(userReviews));
+
+  return updatedReview;
 };
 
 const deleteReviewFromStorage = (reviewId: string): void => {
@@ -156,16 +484,62 @@ const deleteReviewFromStorage = (reviewId: string): void => {
  * GET /api/v1/search/professors?q={query}
  * Fuzzy search professors by name
  */
-export async function searchProfessors(query: string): Promise<string[]> {
+export async function searchProfessors(query: string): Promise<Professor[]> {
   if (USE_MOCK_API) {
     await delay(MOCK_DELAY);
     const lowerQuery = query.toLowerCase();
-    return mockProfessors.filter(professor => 
-      professor.toLowerCase().includes(lowerQuery)
-    );
+
+    const reviews = getAllReviews();
+    const aggregated = new Map<
+      string,
+      { university: string; reviewCount: number }
+    >();
+
+    reviews.forEach(review => {
+      if (review.professorName.toLowerCase().includes(lowerQuery)) {
+        const existing = aggregated.get(review.professorName);
+        if (existing) {
+          existing.reviewCount += 1;
+        } else {
+          aggregated.set(review.professorName, {
+            university: review.universityName,
+            reviewCount: 1,
+          });
+        }
+      }
+    });
+
+    const results = Array.from(aggregated.entries()).map(([name, data], index) => ({
+      id: index + 1,
+      name,
+      university: data.university,
+      reviewCount: data.reviewCount,
+    }));
+
+    if (results.length > 0) {
+      return results;
+    }
+
+    return mockProfessors
+      .filter(professor => professor.toLowerCase().includes(lowerQuery))
+      .map((professor, index) => ({
+        id: index + 1,
+        name: professor,
+        university: 'Mock University',
+        reviewCount: 0,
+      }));
   }
   
-  return apiRequest<string[]>(`/search/professors?q=${encodeURIComponent(query)}`);
+  const response = await apiRequest<unknown>(
+    `/search/global${buildQueryString({ q: query })}`
+  );
+  const professors = extractArrayFromResponse(
+    response,
+    isProfessorLike,
+    ['professors', 'results', 'data']
+  );
+
+  return professors.map(mapApiProfessorToProfessor);
 }
 
 /**
@@ -177,15 +551,18 @@ export async function searchCourses(query: string): Promise<Course[]> {
     await delay(MOCK_DELAY);
     const upperQuery = query.toUpperCase();
     const courses = new Map<string, Course>();
+    let nextId = 1;
     
     mockCourses.forEach(course => {
       if (course.code.toUpperCase() === upperQuery) {
         const key = `${course.code}-${course.university}`;
         if (!courses.has(key)) {
           courses.set(key, {
+            id: nextId++,
             code: course.code,
             name: course.name,
-            university: course.university
+            university: course.university,
+            reviewCount: 0,
           });
         }
       }
@@ -194,7 +571,17 @@ export async function searchCourses(query: string): Promise<Course[]> {
     return Array.from(courses.values());
   }
   
-  return apiRequest<Course[]>(`/search/courses?q=${encodeURIComponent(query)}`);
+  const response = await apiRequest<unknown>(
+    `/search/courses${buildQueryString({ q: query, exact: true })}`
+  );
+
+  const coursesArray = extractArrayFromResponse(
+    response,
+    isCourseLike,
+    ['courses', 'results', 'data']
+  );
+
+  return coursesArray.map(mapApiCourseToCourse);
 }
 
 /**
@@ -214,7 +601,8 @@ export async function getProfessors(): Promise<string[]> {
     return Array.from(professors).sort();
   }
   
-  return apiRequest<string[]>('/professors');
+  const professors = await apiRequest<ApiProfessor[]>('/professors/');
+  return professors.map(professor => professor.name).sort();
 }
 
 /**
@@ -227,7 +615,8 @@ export async function getUniversities(): Promise<string[]> {
     return [...mockUniversities].sort();
   }
   
-  return apiRequest<string[]>('/universities');
+  const universities = await apiRequest<ApiUniversity[]>('/universities/');
+  return universities.map(university => university.name).sort();
 }
 
 /**
@@ -247,7 +636,14 @@ export async function getCourses(): Promise<string[]> {
     return Array.from(courseCodes).sort();
   }
   
-  return apiRequest<string[]>('/courses');
+  const response = await apiRequest<unknown>('/courses/');
+  const courseArray = extractArrayFromResponse(
+    response,
+    isCourseLike,
+    ['courses', 'results', 'data']
+  );
+
+  return courseArray.map(course => course.code).sort();
 }
 
 // ==================== REVIEWS & STATISTICS ENDPOINTS ====================
@@ -265,12 +661,10 @@ export async function getReviewsByProfessor(professorName: string): Promise<Revi
     );
   }
   
-  const reviews = await apiRequest<Review[]>(`/reviews?professor=${encodeURIComponent(professorName)}`);
-  // Convert date strings to Date objects
-  return reviews.map(review => ({
-    ...review,
-    createdAt: new Date(review.createdAt)
-  }));
+  const reviews = await apiRequest<ApiReview[]>(
+    `/reviews/${buildQueryString({ professor_name: professorName })}`
+  );
+  return reviews.map(mapApiReviewToReview);
 }
 
 /**
@@ -287,14 +681,13 @@ export async function getReviewsByCourse(courseCode: string, university: string)
     );
   }
   
-  const reviews = await apiRequest<Review[]>(
-    `/reviews?course=${encodeURIComponent(courseCode)}&university=${encodeURIComponent(university)}`
+  const reviews = await apiRequest<ApiReview[]>(
+    `/reviews/${buildQueryString({
+      course_code: courseCode,
+      university,
+    })}`
   );
-  // Convert date strings to Date objects
-  return reviews.map(review => ({
-    ...review,
-    createdAt: new Date(review.createdAt)
-  }));
+  return reviews.map(mapApiReviewToReview);
 }
 
 /**
@@ -307,26 +700,29 @@ export async function getProfessorStats(name: string): Promise<ProfessorStats> {
     const reviews = await getReviewsByProfessor(name);
     if (reviews.length === 0) {
       return {
-        averageTeaching: 0,
+        averageOverall: 0,
         averageDifficulty: 0,
         averageWorkload: 0,
         totalReviews: 0
       };
     }
     
-    const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
+    const totalOverall = reviews.reduce((sum, review) => sum + review.overallRating, 0);
     const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
     const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
     
     return {
-      averageTeaching: totalTeaching / reviews.length,
+      averageOverall: totalOverall / reviews.length,
       averageDifficulty: totalDifficulty / reviews.length,
       averageWorkload: totalWorkload / reviews.length,
       totalReviews: reviews.length
     };
   }
   
-  return apiRequest<ProfessorStats>(`/stats/professor?name=${encodeURIComponent(name)}`);
+  const stats = await apiRequest<ApiReviewStats | null>(
+    `/reviews/stats${buildQueryString({ professor_name: name })}`
+  );
+  return mapStatsResponseToProfessorStats(stats);
 }
 
 /**
@@ -341,26 +737,30 @@ export async function getCourseStats(courseCode: string, university: string): Pr
       return {
         averageDifficulty: 0,
         averageWorkload: 0,
-        averageTeaching: 0,
+        averageOverall: 0,
         totalReviews: 0
       };
     }
     
     const totalDifficulty = reviews.reduce((sum, review) => sum + review.difficultyRating, 0);
     const totalWorkload = reviews.reduce((sum, review) => sum + review.workloadRating, 0);
-    const totalTeaching = reviews.reduce((sum, review) => sum + review.teachingRating, 0);
+    const totalOverall = reviews.reduce((sum, review) => sum + review.overallRating, 0);
     
     return {
       averageDifficulty: totalDifficulty / reviews.length,
       averageWorkload: totalWorkload / reviews.length,
-      averageTeaching: totalTeaching / reviews.length,
+      averageOverall: totalOverall / reviews.length,
       totalReviews: reviews.length
     };
   }
   
-  return apiRequest<CourseStats>(
-    `/stats/course?code=${encodeURIComponent(courseCode)}&university=${encodeURIComponent(university)}`
+  const stats = await apiRequest<ApiReviewStats | null>(
+    `/reviews/stats${buildQueryString({
+      course_code: courseCode,
+      university,
+    })}`
   );
+  return mapStatsResponseToCourseStats(stats);
 }
 
 // ==================== REVIEW MANAGEMENT (PROTECTED) ====================
@@ -381,7 +781,7 @@ export async function createReview(payload: CreateReviewPayload, userId: string)
       semester: payload.semester,
       professorName: payload.professorName.trim(),
       universityName: payload.universityName.trim(),
-      teachingRating: payload.teachingRating,
+      overallRating: payload.overallRating,
       difficultyRating: payload.difficultyRating,
       workloadRating: payload.workloadRating,
       reviewText: payload.reviewText.trim(),
@@ -394,16 +794,13 @@ export async function createReview(payload: CreateReviewPayload, userId: string)
     return newReview;
   }
   
-  const review = await apiRequest<Review>('/reviews', {
+  const apiPayload = mapCreatePayloadToApi(payload);
+  const review = await apiRequest<ApiReview>('/reviews/', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(apiPayload),
   });
   
-  // Convert date string to Date object
-  return {
-    ...review,
-    createdAt: new Date(review.createdAt)
-  };
+  return mapApiReviewToReview(review);
 }
 
 /**
@@ -417,12 +814,8 @@ export async function getMyReviews(userId: string): Promise<Review[]> {
     return allReviews.filter(review => review.userId === userId);
   }
   
-  const reviews = await apiRequest<Review[]>('/reviews/mine');
-  // Convert date strings to Date objects
-  return reviews.map(review => ({
-    ...review,
-    createdAt: new Date(review.createdAt)
-  }));
+  const reviews = await apiRequest<ApiReview[]>('/reviews/me');
+  return reviews.map(mapApiReviewToReview);
 }
 
 /**
@@ -435,53 +828,30 @@ export async function updateReview(
 ): Promise<Review> {
   if (USE_MOCK_API) {
     await delay(MOCK_DELAY);
-    const savedReviews = localStorage.getItem('userReviews');
-    if (!savedReviews) {
+    const updatedReview = updateReviewInStorage(reviewId, updates);
+    if (!updatedReview) {
       throw new Error('Review not found');
     }
-    
-    const userReviews = JSON.parse(savedReviews);
-    const index = userReviews.findIndex((r: Review) => r.id === reviewId);
-    
-    if (index === -1) {
-      throw new Error('Review not found');
-    }
-    
-    const updatedReview = {
-      ...userReviews[index],
-      ...(updates.courseCode && { courseCode: updates.courseCode.trim().toUpperCase() }),
-      ...(updates.courseName && { courseName: updates.courseName.trim() }),
-      ...(updates.yearTaken && { yearTaken: updates.yearTaken }),
-      ...(updates.semester !== undefined && { semester: updates.semester }),
-      ...(updates.professorName && { professorName: updates.professorName.trim() }),
-      ...(updates.universityName && { universityName: updates.universityName.trim() }),
-      ...(updates.teachingRating && { teachingRating: updates.teachingRating }),
-      ...(updates.difficultyRating && { difficultyRating: updates.difficultyRating }),
-      ...(updates.workloadRating && { workloadRating: updates.workloadRating }),
-      ...(updates.reviewText && { reviewText: updates.reviewText.trim() }),
-      ...(updates.gradeReceived !== undefined && { gradeReceived: updates.gradeReceived }),
-      ...(updates.gradeExpected !== undefined && { gradeExpected: updates.gradeExpected })
-    };
-    
-    userReviews[index] = updatedReview;
-    localStorage.setItem('userReviews', JSON.stringify(userReviews));
-    
+
     return {
       ...updatedReview,
       createdAt: new Date(updatedReview.createdAt)
     };
   }
   
-  const review = await apiRequest<Review>(`/reviews/${reviewId}`, {
+  const numericReviewId = Number(reviewId);
+  if (!Number.isInteger(numericReviewId)) {
+    throw new Error('Invalid review ID');
+  }
+
+  const apiUpdates = mapUpdatePayloadToApi(updates);
+
+  const review = await apiRequest<ApiReview>(`/reviews/${numericReviewId}`, {
     method: 'PUT',
-    body: JSON.stringify(updates),
+    body: JSON.stringify(apiUpdates),
   });
   
-  // Convert date string to Date object
-  return {
-    ...review,
-    createdAt: new Date(review.createdAt)
-  };
+  return mapApiReviewToReview(review);
 }
 
 /**
@@ -495,7 +865,12 @@ export async function deleteReview(reviewId: string): Promise<void> {
     return;
   }
   
-  await apiRequest<void>(`/reviews/${reviewId}`, {
+  const numericReviewId = Number(reviewId);
+  if (!Number.isInteger(numericReviewId)) {
+    throw new Error('Invalid review ID');
+  }
+
+  await apiRequest<void>(`/reviews/${numericReviewId}`, {
     method: 'DELETE',
   });
 }

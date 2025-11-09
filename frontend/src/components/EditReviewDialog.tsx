@@ -27,7 +27,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
     semester: '',
     professorName: '',
     universityName: '',
-    teachingRating: 0,
+    overallRating: 0,
     difficultyRating: 0,
     workloadRating: 0,
     reviewText: '',
@@ -60,7 +60,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
         semester: review.semester || '',
         professorName: review.professorName,
         universityName: review.universityName,
-        teachingRating: review.teachingRating,
+        overallRating: review.overallRating,
         difficultyRating: review.difficultyRating,
         workloadRating: review.workloadRating,
         reviewText: review.reviewText,
@@ -74,7 +74,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRatingClick = (field: 'teachingRating' | 'difficultyRating' | 'workloadRating', rating: number) => {
+  const handleRatingClick = (field: 'overallRating' | 'difficultyRating' | 'workloadRating', rating: number) => {
     setForm(prev => ({ ...prev, [field]: rating }));
   };
 
@@ -84,7 +84,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
            form.yearTaken &&
            form.professorName.trim() &&
            form.universityName.trim() &&
-           form.teachingRating > 0 &&
+           form.overallRating > 0 &&
            form.difficultyRating > 0 &&
            form.workloadRating > 0 &&
            form.reviewText.trim().length >= 20;
@@ -106,7 +106,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
         semester: form.semester || undefined,
         professorName: form.professorName.trim(),
         universityName: form.universityName.trim(),
-        teachingRating: form.teachingRating,
+        overallRating: form.overallRating,
         difficultyRating: form.difficultyRating,
         workloadRating: form.workloadRating,
         reviewText: form.reviewText.trim(),
@@ -124,7 +124,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
   };
 
   const renderStarRating = (
-    field: 'teachingRating' | 'difficultyRating' | 'workloadRating',
+    field: 'overallRating' | 'difficultyRating' | 'workloadRating',
     value: number,
     label: string
   ) => (
@@ -298,7 +298,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
 
           {/* Ratings */}
           <div className="grid gap-4 md:grid-cols-3">
-            {renderStarRating('teachingRating', form.teachingRating, 'Teaching Quality')}
+            {renderStarRating('overallRating', form.overallRating, 'Overall Rating')}
             {renderStarRating('difficultyRating', form.difficultyRating, 'Course Difficulty')}
             {renderStarRating('workloadRating', form.workloadRating, 'Workload')}
           </div>
