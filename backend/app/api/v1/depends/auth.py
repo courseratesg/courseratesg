@@ -229,4 +229,3 @@ async def get_optional_user(
     except HTTPException:
         # Token invalid, return None (don't raise exception)
         return None
-
