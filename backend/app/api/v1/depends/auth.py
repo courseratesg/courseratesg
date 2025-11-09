@@ -13,7 +13,7 @@ from app.api.v1.depends.settings import get_app_settings
 logger = logging.getLogger(__name__)
 
 # Cache for Cognito public keys
-_cognito_keys_cache: dict | None = None
+_cognito_keys_cache: list[dict] | None = None
 
 
 def get_cognito_public_keys() -> list[dict]:
