@@ -59,18 +59,20 @@ class DataStore:
         """
         return self._reviews.get(review_id)
 
-    def create_review(self, review_in: ReviewCreate) -> Review:
+    def create_review(self, review_in: ReviewCreate, user_id: str | None = None) -> Review:
         """
         Create a new review.
 
         Args:
             review_in: Review creation data
+            user_id: User ID (Cognito sub) - optional for backward compatibility
 
         Returns:
             Created review with ID and timestamps
         """
         review_data = review_in.model_dump()
         review_data["id"] = self._next_review_id
+        review_data["user_id"] = user_id
         review_data["created_at"] = datetime.utcnow()
         review_data["updated_at"] = datetime.utcnow()
 

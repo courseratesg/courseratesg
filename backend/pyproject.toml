@@ -18,6 +18,8 @@ pydantic-settings = "^2.0.0"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 python-multipart = "^0.0.9"
 email-validator = "^2.1.0"
+requests = "^2.31.0"
+pyjwt = {extras = ["crypto"], version = "^2.8.0"}
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.4"

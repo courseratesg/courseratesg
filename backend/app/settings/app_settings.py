@@ -21,6 +21,11 @@ class AppSettings(BaseSettings):
     # CORS Settings
     allowed_origins: list[str] = ["*"]
 
+    # AWS Cognito Settings
+    aws_region: str = Field(default="us-east-1", description="AWS region for Cognito")
+    cognito_user_pool_id: str = Field(default="", description="Cognito User Pool ID")
+    cognito_client_id: str = Field(default="", description="Cognito App Client ID")
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILES,
         env_ignore_empty=True,

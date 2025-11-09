@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
+from app.api.v1.depends.auth import get_current_user, get_optional_user
 from app.api.v1.depends.storage import get_review_storage
 from app.schemas import review as review_schema
 from app.storage.review_storage import ReviewStorage
@@ -15,40 +16,49 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 def create_review(
     review_in: review_schema.ReviewCreate,
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],
 ) -> Any:
     """
-    Create a new review.
+    Create a new review (requires authentication).
 
     Args:
         review_in: Review creation data
         review_storage: Review storage dependency
+        current_user: Current authenticated user
 
     Returns:
         Created review
     """
-    review = review_storage.create(review_in)
+    # Create review with user_id from authenticated user
+    review = review_storage.create(review_in, user_id=current_user["user_id"])
     return review
 
 
 @router.get("/me", response_model=list[review_schema.Review])
 def get_my_reviews(
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> Any:
     """
-    Get current user's reviews.
-
-    Reserved for auth branch - returns empty list for now.
+    Get current user's reviews (requires authentication).
 
     Args:
         skip: Number of records to skip
         limit: Maximum number of records to return
+        review_storage: Review storage dependency
+        current_user: Current authenticated user
 
     Returns:
-        List of user's reviews (empty for now)
+        List of user's reviews
     """
-    # TODO: Implement user-specific review retrieval when authentication is added
-    return []
+    reviews = review_storage.filter_reviews(
+        user_id=current_user["user_id"],
+        skip=skip,
+        limit=limit,
+    )
+    return reviews
 
 
 # TODO: fuzzy search
@@ -92,9 +102,10 @@ def list_reviews(
     university: Annotated[str | None, Query(description="Filter by university")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
+    current_user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ) -> Any:
     """
-    Retrieve reviews with optional filtering.
+    Retrieve reviews with optional filtering (no authentication required).
 
     Query parameters:
         - professor_name: Get reviews for a specific professor
@@ -108,6 +119,7 @@ def list_reviews(
         skip: Number of records to skip
         limit: Maximum number of records to return
         review_storage: Review storage dependency
+        current_user: Current user (optional, if authenticated)
 
     Returns:
         List of reviews
@@ -157,48 +169,74 @@ def update_review(
     review_id: Annotated[int, Path(description="Review ID", gt=0)],
     review_in: review_schema.ReviewUpdate,
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],
 ) -> Any:
     """
-    Update a review.
+    Update a review (requires authentication, only owner can update).
 
     Args:
         review_id: Review ID
         review_in: Review update data
         review_storage: Review storage dependency
+        current_user: Current authenticated user
 
     Returns:
         Updated review
 
     Raises:
-        HTTPException: If review not found
+        HTTPException: If review not found or user is not the owner
     """
-    review = review_storage.update(review_id, review_in)
+    # Check if review exists
+    review = review_storage.get(review_id)
     if not review:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Review not found",
         )
-    return review
+
+    # Check ownership
+    if review.user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own reviews",
+        )
+
+    # Update review
+    updated_review = review_storage.update(review_id, review_in)
+    return updated_review
 
 
 @router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(
     review_id: Annotated[int, Path(description="Review ID", gt=0)],
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],
 ) -> None:
     """
-    Delete a review.
+    Delete a review (requires authentication, only owner can delete).
 
     Args:
         review_id: Review ID
         review_storage: Review storage dependency
+        current_user: Current authenticated user
 
     Raises:
-        HTTPException: If review not found
+        HTTPException: If review not found or user is not the owner
     """
-    deleted = review_storage.delete(review_id)
-    if not deleted:
+    # Check if review exists
+    review = review_storage.get(review_id)
+    if not review:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Review not found",
         )
+
+    # Check ownership
+    if review.user_id != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own reviews",
+        )
+
+    # Delete review
+    review_storage.delete(review_id)
