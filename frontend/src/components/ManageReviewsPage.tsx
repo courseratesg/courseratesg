@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Edit, Trash2, Star, Calendar, Building, BookOpen, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -18,14 +18,14 @@ export function ManageReviewsPage({ currentUser, onNavigate }: ManageReviewsPage
   const [reviews, setReviews] = useState<Review[]>([]);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
 
-  useEffect(() => {
-    loadUserReviews();
-  }, [currentUser.id]);
-
-  const loadUserReviews = async () => {
+  const loadUserReviews = useCallback(async () => {
     const userReviews = await getMyReviews(currentUser.id);
     setReviews(userReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-  };
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    loadUserReviews();
+  }, [loadUserReviews]);
 
   const handleDeleteReview = async (reviewId: string) => {
     try {
@@ -116,8 +116,6 @@ export function ManageReviewsPage({ currentUser, onNavigate }: ManageReviewsPage
                   <CardTitle className="flex items-center space-x-2">
                     <BookOpen className="h-5 w-5 text-blue-600" />
                     <span>{review.courseCode}</span>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-base font-normal">{review.courseName}</span>
                   </CardTitle>
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center space-x-1">

@@ -19,7 +19,6 @@ export type Review = {
   id: string;
   userId: string;
   courseCode: string;
-  courseName: string;
   yearTaken: string;
   semester?: string;
   professorName: string;
@@ -206,7 +205,12 @@ function App() {
             onNavigate={navigateToPage}
           />
         )}
-        {currentPage === 'submit-review' && currentUser && <SubmitReviewPage currentUser={currentUser} />}
+        {currentPage === 'submit-review' && currentUser && (
+          <SubmitReviewPage
+            currentUser={currentUser}
+            onReviewSubmitted={() => navigateToPage('manage-reviews')}
+          />
+        )}
         {currentPage === 'manage-reviews' && currentUser && <ManageReviewsPage currentUser={currentUser} onNavigate={navigateToPage} />}
         {currentPage === 'professor-profile' && (
           <ProfessorProfilePage professorName={selectedProfessor} />

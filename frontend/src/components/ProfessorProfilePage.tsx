@@ -219,8 +219,6 @@ export function ProfessorProfilePage({ professorName }: ProfessorProfilePageProp
                         <CardTitle className="flex items-center space-x-2">
                           <BookOpen className="h-5 w-5 text-blue-600" />
                           <span>{review.courseCode}</span>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-base font-normal">{review.courseName}</span>
                         </CardTitle>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           <div className="flex items-center space-x-1">
