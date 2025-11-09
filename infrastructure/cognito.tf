@@ -78,10 +78,12 @@ resource "aws_cognito_user_pool_client" "main" {
   read_attributes = [
     "email",
     "email_verified",
+    "nickname",
   ]
 
   write_attributes = [
     "email",
+    "nickname",
   ]
 }
 
