@@ -5,7 +5,7 @@ from typing import Annotated
 
 import jwt
 import requests
-from fastapi import HTTPException, Header, status
+from fastapi import Header, HTTPException, status
 from jwt.algorithms import RSAAlgorithm
 
 from app.api.v1.depends.settings import get_app_settings
