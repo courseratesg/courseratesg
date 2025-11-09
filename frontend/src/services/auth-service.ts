@@ -50,7 +50,7 @@ class MockAuthService {
   }
 
   // Save a new user to localStorage
-  private saveRegisteredUser(username: string, password: string, email: string, name: string, sub: string) {
+  private saveRegisteredUser(username: string, password: string, nickname: string, sub: string) {
     const stored = localStorage.getItem(this.STORAGE_KEY);
     const storedUsers = stored ? JSON.parse(stored) : [];
     storedUsers.push({
@@ -58,8 +58,8 @@ class MockAuthService {
       password,
       attributes: {
         sub,
-        email,
-        name,
+        email: username,
+        name: nickname,
       },
     });
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(storedUsers));
@@ -103,8 +103,7 @@ class MockAuthService {
   async signUp(
     username: string,
     password: string,
-    email: string,
-    name: string
+    nickname: string
   ): Promise<{ success: boolean; error?: AuthError; confirmationRequired?: boolean }> {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
@@ -121,7 +120,7 @@ class MockAuthService {
     }
 
     const sub = `mock-user-${Date.now()}`;
-    this.saveRegisteredUser(username, password, email, name, sub);
+    this.saveRegisteredUser(username, password, nickname, sub);
 
     return { success: true };
   }
@@ -215,8 +214,7 @@ class CognitoAuthService {
   async signUp(
     username: string,
     password: string,
-    email: string,
-    name: string
+    nickname: string
   ): Promise<{ success: boolean; error?: AuthError; confirmationRequired?: boolean }> {
     try {
       const { isSignUpComplete, nextStep } = await signUp({
@@ -224,8 +222,8 @@ class CognitoAuthService {
         password,
         options: {
           userAttributes: {
-            email,
-            name,
+            email: username,
+            nickname,
           },
           autoSignIn: {
             enabled: false, // We'll sign in manually after confirmation

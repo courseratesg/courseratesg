@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GraduationCap, AlertCircle, ArrowLeft } from 'lucide-react';
+import { GraduationCap, AlertCircle, ArrowLeft, MailCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -21,13 +21,14 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
   const [showSignUp, setShowSignUp] = useState(false);
   const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [signUpEmail, setSignUpEmail] = useState('');
-  const [signUpName, setSignUpName] = useState('');
+  const [signUpNickname, setSignUpNickname] = useState('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setStatusMessage(null);
 
     try {
       const result = await authService.signIn(username, password);
@@ -48,19 +49,20 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setStatusMessage(null);
 
     try {
       const result = await authService.signUp(
         signUpUsername,
         signUpPassword,
-        signUpEmail,
-        signUpName
+        signUpNickname
       );
 
       if (result.success) {
         if (result.confirmationRequired) {
-          // Email confirmation required
-          setError('Please check your email for a verification code to complete sign up.');
+          setStatusMessage(
+            `We just sent a verification email to ${signUpUsername}. Click the confirmation link in that message to finish setting up your account.`
+          );
         } else {
           // Auto-confirmed, sign in automatically
           const signInResult = await authService.signIn(signUpUsername, signUpPassword);
@@ -116,6 +118,12 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {statusMessage && (
+            <Alert className="mb-4">
+              <MailCheck className="h-4 w-4" />
+              <AlertDescription>{statusMessage}</AlertDescription>
+            </Alert>
+          )}
 
           {!showSignUp ? (
             <form onSubmit={handleSignIn} className="space-y-4">
@@ -154,7 +162,11 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
               <div className="text-center mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowSignUp(true)}
+                  onClick={() => {
+                    setShowSignUp(true);
+                    setError(null);
+                    setStatusMessage(null);
+                  }}
                   className="text-sm text-blue-600 hover:text-blue-700"
                 >
                   Don't have an account? Sign up
@@ -164,37 +176,25 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
           ) : (
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-username">Username</Label>
+                <Label htmlFor="signup-username">Email</Label>
                 <Input
                   id="signup-username"
                   type="text"
                   value={signUpUsername}
                   onChange={(e) => setSignUpUsername(e.target.value)}
-                  placeholder="Choose a username"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-name">Full Name</Label>
-                <Input
-                  id="signup-name"
-                  type="text"
-                  value={signUpName}
-                  onChange={(e) => setSignUpName(e.target.value)}
-                  placeholder="Enter your full name"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  value={signUpEmail}
-                  onChange={(e) => setSignUpEmail(e.target.value)}
                   placeholder="Enter your email"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-nickname">Nickname</Label>
+                <Input
+                  id="signup-nickname"
+                  type="text"
+                  value={signUpNickname}
+                  onChange={(e) => setSignUpNickname(e.target.value)}
+                  placeholder="Enter your nickname"
                   required
                   disabled={isLoading}
                 />
@@ -222,7 +222,11 @@ export function LoginPage({ onLogin, onNavigateHome }: LoginPageProps) {
               <div className="text-center mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowSignUp(false)}
+                  onClick={() => {
+                    setShowSignUp(false);
+                    setError(null);
+                    setStatusMessage(null);
+                  }}
                   className="text-sm text-blue-600 hover:text-blue-700"
                 >
                   Already have an account? Sign in
