@@ -24,7 +24,7 @@ export type Review = {
   semester?: string;
   professorName: string;
   universityName: string;
-  teachingRating: number;
+  overallRating: number;
   difficultyRating: number;
   workloadRating: number;
   reviewText: string;

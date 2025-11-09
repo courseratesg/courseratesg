@@ -186,10 +186,10 @@ export function ManageReviewsPage({ currentUser, onNavigate }: ManageReviewsPage
                 {/* Ratings */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-700">Teaching Quality</p>
+                    <p className="text-sm font-medium text-gray-700">Overall Rating</p>
                     <div className="flex items-center space-x-2">
-                      {renderStars(review.teachingRating)}
-                      <span className="text-sm text-gray-600">{review.teachingRating}/5</span>
+                      {renderStars(review.overallRating)}
+                      <span className="text-sm text-gray-600">{review.overallRating}/5</span>
                     </div>
                   </div>
                   <div className="space-y-1">

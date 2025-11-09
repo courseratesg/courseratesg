@@ -22,7 +22,7 @@ interface ReviewForm {
   semester: string;
   professorName: string;
   universityName: string;
-  teachingRating: number;
+  overallRating: number;
   difficultyRating: number;
   workloadRating: number;
   reviewText: string;
@@ -40,7 +40,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
     semester: '',
     professorName: '',
     universityName: '',
-    teachingRating: 0,
+    overallRating: 0,
     difficultyRating: 0,
     workloadRating: 0,
     reviewText: '',
@@ -77,7 +77,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRatingClick = (field: 'teachingRating' | 'difficultyRating' | 'workloadRating', rating: number) => {
+  const handleRatingClick = (field: 'overallRating' | 'difficultyRating' | 'workloadRating', rating: number) => {
     setForm(prev => ({ ...prev, [field]: rating }));
   };
 
@@ -87,7 +87,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
            form.yearTaken &&
            form.professorName.trim() &&
            form.universityName.trim() &&
-           form.teachingRating > 0 &&
+           form.overallRating > 0 &&
            form.difficultyRating > 0 &&
            form.workloadRating > 0 &&
            form.reviewText.trim().length >= 20;
@@ -112,7 +112,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
           semester: form.semester || undefined,
           professorName: form.professorName,
           universityName: form.universityName,
-          teachingRating: form.teachingRating,
+          overallRating: form.overallRating,
           difficultyRating: form.difficultyRating,
           workloadRating: form.workloadRating,
           reviewText: form.reviewText,
@@ -132,7 +132,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
         semester: '',
         professorName: '',
         universityName: '',
-        teachingRating: 0,
+        overallRating: 0,
         difficultyRating: 0,
         workloadRating: 0,
         reviewText: '',
@@ -174,7 +174,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
   };
 
   const renderStarRating = (
-    field: 'teachingRating' | 'difficultyRating' | 'workloadRating',
+    field: 'overallRating' | 'difficultyRating' | 'workloadRating',
     value: number,
     label: string,
     description: string
@@ -476,10 +476,10 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
             </CardHeader>
             <CardContent className="grid gap-6 md:grid-cols-3">
               {renderStarRating(
-                'teachingRating',
-                form.teachingRating,
-                'Teaching Quality',
-                'How well did the professor teach and explain concepts?'
+                'overallRating',
+                form.overallRating,
+                'Overall Rating',
+                'How would you rate your overall experience with the course and professor?'
               )}
 
               {renderStarRating(
@@ -538,7 +538,7 @@ export function SubmitReviewPage({ currentUser }: SubmitReviewPageProps) {
                     semester: '',
                     professorName: '',
                     universityName: '',
-                    teachingRating: 0,
+                    overallRating: 0,
                     difficultyRating: 0,
                     workloadRating: 0,
                     reviewText: '',

@@ -15,7 +15,12 @@ interface CourseProfilePageProps {
 export function CourseProfilePage({ courseCode, universityName }: CourseProfilePageProps) {
   const [allReviews, setAllReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
-  const [stats, setStats] = useState({ averageDifficulty: 0, averageWorkload: 0, totalReviews: 0 });
+  const [stats, setStats] = useState({
+    averageOverall: 0,
+    averageDifficulty: 0,
+    averageWorkload: 0,
+    totalReviews: 0
+  });
   const [professorFilter, setProfessorFilter] = useState<string>('');
   const [displayCount, setDisplayCount] = useState(5);
 
@@ -26,6 +31,7 @@ export function CourseProfilePage({ courseCode, universityName }: CourseProfileP
       setAllReviews(sortedReviews);
       const courseStats = await getCourseStats(courseCode, universityName);
       setStats({
+        averageOverall: courseStats.averageOverall ?? 0,
         averageDifficulty: courseStats.averageDifficulty,
         averageWorkload: courseStats.averageWorkload,
         totalReviews: courseStats.totalReviews
@@ -132,7 +138,18 @@ export function CourseProfilePage({ courseCode, universityName }: CourseProfileP
               <span className="text-gray-600">{universityName}</span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white/70 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  <span className="font-medium">Average Overall Rating</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {renderStars(Math.round(stats.averageOverall))}
+                  <span className="text-lg font-semibold">{stats.averageOverall.toFixed(1)}/5</span>
+                </div>
+              </div>
+              
               <div className="bg-white/70 p-4 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <TrendingUp className="h-5 w-5 text-red-500" />
@@ -256,10 +273,10 @@ export function CourseProfilePage({ courseCode, universityName }: CourseProfileP
                       {/* Ratings */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-gray-700">Teaching Quality</p>
+                          <p className="text-sm font-medium text-gray-700">Overall Rating</p>
                           <div className="flex items-center space-x-2">
-                            {renderStars(review.teachingRating)}
-                            <span className="text-sm text-gray-600">{review.teachingRating}/5</span>
+                            {renderStars(review.overallRating)}
+                            <span className="text-sm text-gray-600">{review.overallRating}/5</span>
                           </div>
                         </div>
                         <div className="space-y-1">

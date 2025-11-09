@@ -14,7 +14,11 @@ interface ProfessorProfilePageProps {
 export function ProfessorProfilePage({ professorName }: ProfessorProfilePageProps) {
   const [allReviews, setAllReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
-  const [stats, setStats] = useState({ averageTeaching: 0, averageDifficulty: 0, totalReviews: 0 });
+  const [stats, setStats] = useState({
+    averageOverall: 0,
+    averageDifficulty: 0,
+    totalReviews: 0
+  });
   const [courseFilter, setCourseFilter] = useState<string>('');
   const [displayCount, setDisplayCount] = useState(5);
 
@@ -25,7 +29,7 @@ export function ProfessorProfilePage({ professorName }: ProfessorProfilePageProp
       setAllReviews(sortedReviews);
       const professorStats = await getProfessorStats(professorName);
       setStats({
-        averageTeaching: professorStats.averageTeaching,
+        averageOverall: professorStats.averageOverall,
         averageDifficulty: professorStats.averageDifficulty,
         totalReviews: professorStats.totalReviews
       });
@@ -115,11 +119,11 @@ export function ProfessorProfilePage({ professorName }: ProfessorProfilePageProp
               <div className="bg-white/70 p-4 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <Star className="h-5 w-5 text-yellow-500" />
-                  <span className="font-medium">Teaching Quality</span>
+                  <span className="font-medium">Overall Rating</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {renderStars(Math.round(stats.averageTeaching))}
-                  <span className="text-lg font-semibold">{stats.averageTeaching.toFixed(1)}/5</span>
+                  {renderStars(Math.round(stats.averageOverall))}
+                  <span className="text-lg font-semibold">{stats.averageOverall.toFixed(1)}/5</span>
                 </div>
               </div>
               
@@ -258,10 +262,10 @@ export function ProfessorProfilePage({ professorName }: ProfessorProfilePageProp
                       {/* Ratings */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-gray-700">Teaching Quality</p>
+                          <p className="text-sm font-medium text-gray-700">Overall Rating</p>
                           <div className="flex items-center space-x-2">
-                            {renderStars(review.teachingRating)}
-                            <span className="text-sm text-gray-600">{review.teachingRating}/5</span>
+                            {renderStars(review.overallRating)}
+                            <span className="text-sm text-gray-600">{review.overallRating}/5</span>
                           </div>
                         </div>
                         <div className="space-y-1">
