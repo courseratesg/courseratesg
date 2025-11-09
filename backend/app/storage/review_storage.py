@@ -18,17 +18,18 @@ class ReviewStorage:
         """
         self._data_store = data_store
 
-    def create(self, review_in: ReviewCreate) -> Review:
+    def create(self, review_in: ReviewCreate, user_id: str | None = None) -> Review:
         """
         Create a new review.
 
         Args:
             review_in: Review creation data
+            user_id: User ID (Cognito sub)
 
         Returns:
             Created review
         """
-        return self._data_store.create_review(review_in)
+        return self._data_store.create_review(review_in, user_id=user_id)
 
     def get(self, review_id: int) -> Review | None:
         """
@@ -87,7 +88,7 @@ class ReviewStorage:
         professor_name: str | None = None,
         course_code: str | None = None,
         university: str | None = None,
-        user_id: int | None = None,
+        user_id: str | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Review]:
@@ -98,7 +99,7 @@ class ReviewStorage:
             professor_name: Professor name to filter by
             course_code: Course code to filter by
             university: University name to filter by
-            user_id: User ID to filter by (for "my reviews")
+            user_id: User ID (Cognito sub) to filter by (for "my reviews")
             skip: Number of reviews to skip
             limit: Maximum number of reviews to return
 
@@ -117,8 +118,8 @@ class ReviewStorage:
             filtered = [r for r in filtered if r.university.lower() == university.lower()]
 
         if user_id is not None:
-            # For future auth support - mock for now
-            filtered = []
+            # Filter by user_id (Cognito sub)
+            filtered = [r for r in filtered if r.user_id == user_id]
 
         return filtered[skip : skip + limit]
 

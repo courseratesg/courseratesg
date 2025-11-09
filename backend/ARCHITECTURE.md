@@ -16,32 +16,48 @@ backend/
 │   │   └── v1/
 │   │       ├── __init__.py
 │   │       ├── router.py       # Main API router
+│   │       ├── depends/        # Dependencies
+│   │       │   ├── auth.py     # Authentication dependencies
+│   │       │   ├── settings.py # Settings dependencies
+│   │       │   └── storage.py  # Storage dependencies
 │   │       └── endpoints/
 │   │           ├── __init__.py
-│   │           └── reviews.py  # Review endpoints
+│   │           ├── reviews.py  # Review endpoints
+│   │           ├── professors.py
+│   │           ├── courses.py
+│   │           ├── universities.py
+│   │           └── search.py
 │   │
 │   ├── schemas/                # Pydantic schemas
 │   │   ├── __init__.py
-│   │   └── review.py          # Review schemas (Base, Create, Update, Response)
+│   │   ├── review.py          # Review schemas
+│   │   ├── professor.py       # Professor schemas
+│   │   ├── course.py          # Course schemas
+│   │   └── university.py      # University schemas
 │   │
 │   ├── settings/               # Configuration
 │   │   ├── __init__.py
 │   │   ├── common.py          # Common settings
-│   │   └── app_settings.py    # API and CORS settings
+│   │   └── app_settings.py    # API, CORS, and Cognito settings
 │   │
 │   └── storage/                # In-memory storage
 │       ├── __init__.py
-│       └── review_storage.py  # ReviewStorage class
+│       ├── data_store.py      # Central data store
+│       ├── review_storage.py  # Review storage
+│       ├── professor_storage.py
+│       ├── course_storage.py
+│       └── university_storage.py
 │
 ├── tests/                      # Test suite
 │   ├── __init__.py
 │   └── test_app.py
 │
-├── .env.local.example         # Environment variables template
+├── env.example                # Environment variables template
 ├── .gitignore
 ├── .ruff.toml                 # Ruff configuration
 ├── Dockerfile                 # Docker configuration
-├── pyproject.toml             # Poetry dependencies
+├── pyproject.toml             # Poetry dependencies and dependencies
+├── requirements.txt           # Generated from pyproject.toml
 ├── README.md                  # Project documentation
 └── ARCHITECTURE.md            # This file
 ```
@@ -502,6 +518,156 @@ Future implementations (other branches):
 2. **Ownership Checks** - Users can only modify own reviews
 3. **SQL Injection Prevention** - SQLAlchemy parameterized queries
 4. **Rate Limiting** - API rate limiting per user/IP
+
+## Authentication & Authorization
+
+### Overview
+
+The backend uses **AWS Cognito** for user authentication with JWT token verification.
+
+### Authentication Flow
+
+```
+Frontend (React + AWS Amplify)
+    ↓
+User logs in via Cognito
+    ↓
+Receives JWT tokens (id_token, access_token, refresh_token)
+    ↓
+Makes API request with: Authorization: Bearer <id_token>
+    ↓
+Backend FastAPI
+    ↓
+get_current_user() dependency
+    ↓
+1. Extract token from Authorization header
+2. Fetch Cognito public keys (JWKS endpoint, cached)
+3. Verify token signature using RSA public key
+4. Check token expiration
+5. Verify audience (Client ID)
+6. Extract user info (sub, email, name)
+    ↓
+Endpoint handler receives user_info dict
+    ↓
+Execute protected operation
+```
+
+### Authentication Dependencies
+
+Located in `app/api/v1/depends/auth.py`:
+
+**`get_cognito_public_keys()`**
+- Fetches Cognito's public keys from JWKS endpoint
+- Caches keys in memory to reduce network calls
+- URL: `https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json`
+
+**`verify_cognito_token(token: str) -> dict`**
+- Extracts `kid` from JWT header
+- Finds matching public key
+- Verifies signature using RSA256 algorithm
+- Validates expiration and audience
+- Returns decoded payload with user info
+
+**`get_current_user()` - Mandatory Authentication**
+- FastAPI dependency for protected endpoints
+- Extracts and validates token from `Authorization` header
+- Returns user info dict: `{user_id, email, name, email_verified}`
+- Raises `401 Unauthorized` if token invalid/missing
+
+**`get_optional_user()` - Optional Authentication**
+- For endpoints that work with or without auth
+- Returns user info if valid token provided
+- Returns `None` if no token or invalid token
+- Never raises exceptions
+
+### Protected Endpoints
+
+Endpoints requiring authentication use `Depends(get_current_user)`:
+
+```python
+@router.post("/", response_model=Review)
+def create_review(
+    review_in: ReviewCreate,
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],  # Authentication required
+) -> Any:
+    # User automatically authenticated
+    review = review_storage.create(review_in, user_id=current_user["user_id"])
+    return review
+```
+
+**Protected endpoints:**
+- `POST /api/v1/reviews` - Create review
+- `GET /api/v1/reviews/me` - Get my reviews
+- `PUT /api/v1/reviews/{id}` - Update review (with ownership check)
+- `DELETE /api/v1/reviews/{id}` - Delete review (with ownership check)
+
+### Ownership Validation
+
+Update and delete operations verify ownership:
+
+```python
+@router.put("/{review_id}")
+def update_review(
+    review_id: Annotated[int, Path(gt=0)],
+    review_in: ReviewUpdate,
+    review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    current_user: Annotated[dict, Depends(get_current_user)],
+) -> Any:
+    review = review_storage.get(review_id)
+    if not review:
+        raise HTTPException(404, "Review not found")
+    
+    # Ownership check
+    if review.user_id != current_user["user_id"]:
+        raise HTTPException(403, "You can only update your own reviews")
+    
+    return review_storage.update(review_id, review_in)
+```
+
+### Configuration
+
+Required environment variables in `.env.local`:
+
+```env
+AWS_REGION=ap-southeast-1
+COGNITO_USER_POOL_ID=ap-southeast-1_XXXXXXXXX
+COGNITO_CLIENT_ID=your_cognito_client_id_here
+ALLOWED_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+```
+
+Get Cognito values from Terraform output:
+```bash
+terraform output cognito_user_pool_id
+terraform output cognito_client_id
+```
+
+### Data Model Changes
+
+**Review Schema** (`app/schemas/review.py`):
+- Added `user_id: str | None` field to store Cognito user ID (sub)
+
+**DataStore** (`app/storage/data_store.py`):
+- `create_review()` accepts optional `user_id` parameter
+
+**ReviewStorage** (`app/storage/review_storage.py`):
+- `create()` accepts optional `user_id` parameter
+- `filter_reviews()` supports filtering by `user_id` for "my reviews" functionality
+
+### Error Responses
+
+**401 Unauthorized:**
+```json
+{"detail": "Missing authorization header"}
+{"detail": "Token has expired"}
+{"detail": "Invalid token: signature verification failed"}
+```
+
+**403 Forbidden:**
+```json
+{"detail": "You can only update your own reviews"}
+{"detail": "You can only delete your own reviews"}
+```
 
 ## Testing Strategy
 
