@@ -61,6 +61,7 @@ resource "aws_amplify_app" "main" {
   }
 
   environment_variables = {
+    VITE_USE_MOCK_API            = false
     VITE_API_BASE_URL            = "https://api.${var.domain_name}"
     VITE_AWS_REGION              = var.aws_region
     VITE_AWS_USER_POOL_ID        = aws_cognito_user_pool.main.id
