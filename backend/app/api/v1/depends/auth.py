@@ -6,12 +6,17 @@ from typing import Annotated, cast
 import jwt
 import requests
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.algorithms import RSAAlgorithm
 
 from app.api.v1.depends.settings import get_app_settings
 
 logger = logging.getLogger(__name__)
+
+# Security schemes for Swagger UI
+security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 # Cache for Cognito public keys
 _cognito_keys_cache: list[dict] | None = None
@@ -142,7 +147,7 @@ def verify_cognito_token(token: str) -> dict:
 
 
 async def get_current_user(
-    authorization: Annotated[str | None, Header()] = None,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ) -> dict:
     """
     Get current authenticated user from Authorization header.
@@ -151,7 +156,7 @@ async def get_current_user(
     Used for endpoints that require mandatory authentication.
 
     Args:
-        authorization: Authorization header (Bearer token)
+        credentials: HTTP Bearer credentials (automatically extracted by FastAPI)
 
     Returns:
         User information dictionary containing:
@@ -163,24 +168,8 @@ async def get_current_user(
     Raises:
         HTTPException: Not authenticated or invalid token
     """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Extract token
-    try:
-        scheme, token = authorization.split(maxsplit=1)
-        if scheme.lower() != "bearer":
-            raise ValueError("Invalid scheme")
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format. Expected: Bearer <token>",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from e
+    # Extract token from credentials
+    token = credentials.credentials
 
     # Verify token
     payload = verify_cognito_token(token)
@@ -205,7 +194,7 @@ async def get_current_user(
 
 
 async def get_optional_user(
-    authorization: Annotated[str | None, Header()] = None,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(optional_security)] = None,
 ) -> dict | None:
     """
     Optional user authentication (does not require login).
@@ -217,16 +206,17 @@ async def get_optional_user(
     that can show additional info for authenticated users).
 
     Args:
-        authorization: Authorization header (Bearer token)
+        credentials: HTTP Bearer credentials (optional)
 
     Returns:
         User information dictionary or None
     """
-    if not authorization:
+    if not credentials:
         return None
 
     try:
-        return await get_current_user(authorization)
+        # Reuse get_current_user logic by calling it directly
+        return await get_current_user(credentials)
     except HTTPException:
         # Token invalid, return None (don't raise exception)
         return None
