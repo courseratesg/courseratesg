@@ -1,10 +1,11 @@
 """Authentication dependencies for JWT token verification."""
 
 import logging
-from typing import Annotated
+from typing import Annotated, cast
 
 import jwt
 import requests
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import Header, HTTPException, status
 from jwt.algorithms import RSAAlgorithm
 
@@ -37,13 +38,13 @@ def get_cognito_public_keys() -> list[dict]:
 
     settings = get_app_settings()
 
-    if not settings.cognito_user_pool_id or not settings.aws_region:
+    if not settings.cognito_user_pool_id or not settings.cognito_region:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Cognito configuration not set",
         )
 
-    region = settings.aws_region
+    region = settings.cognito_region
     user_pool_id = settings.cognito_user_pool_id
 
     keys_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json"
@@ -97,7 +98,7 @@ def verify_cognito_token(token: str) -> dict:
         for key in keys:
             if key.get("kid") == kid:
                 # Convert JWK to public key using PyJWT's RSAAlgorithm
-                public_key = RSAAlgorithm.from_jwk(key)
+                public_key = cast(RSAPublicKey, RSAAlgorithm.from_jwk(key))
                 break
 
         if not public_key:
@@ -112,7 +113,7 @@ def verify_cognito_token(token: str) -> dict:
             token,
             public_key,
             algorithms=["RS256"],
-            audience=settings.cognito_client_id,
+            audience=settings.cognito_user_pool_client_id,
             options={"verify_exp": True, "verify_aud": True},
         )
 
@@ -188,7 +189,9 @@ async def get_current_user(
     user_info = {
         "user_id": payload.get("sub"),  # Cognito user ID
         "email": payload.get("email"),
-        "name": payload.get("name", payload.get("email")),  # Fallback to email if name not set
+        "name": payload.get(
+            "name", payload.get("email")
+        ),  # Fallback to email if name not set
         "email_verified": payload.get("email_verified", False),
         "username": payload.get("cognito:username", payload.get("email")),
     }

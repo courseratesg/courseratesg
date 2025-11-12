@@ -22,9 +22,13 @@ class AppSettings(BaseSettings):
     allowed_origins: list[str] = ["*"]
 
     # AWS Cognito Settings
-    aws_region: str = Field(default="us-east-1", description="AWS region for Cognito")
+    cognito_region: str = Field(
+        default="ap-southeast-1", description="AWS region for Cognito"
+    )
     cognito_user_pool_id: str = Field(default="", description="Cognito User Pool ID")
-    cognito_client_id: str = Field(default="", description="Cognito App Client ID")
+    cognito_user_pool_client_id: str = Field(
+        default="", description="Cognito App Client ID"
+    )
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILES,
