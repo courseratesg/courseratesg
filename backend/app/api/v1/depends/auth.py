@@ -38,13 +38,13 @@ def get_cognito_public_keys() -> list[dict]:
 
     settings = get_app_settings()
 
-    if not settings.cognito_user_pool_id or not settings.cognito_region:
+    if not settings.cognito_user_pool_id or not settings.aws_region:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Cognito configuration not set",
         )
 
-    region = settings.cognito_region
+    region = settings.aws_region
     user_pool_id = settings.cognito_user_pool_id
 
     keys_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json"
