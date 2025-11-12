@@ -189,9 +189,7 @@ async def get_current_user(
     user_info = {
         "user_id": payload.get("sub"),  # Cognito user ID
         "email": payload.get("email"),
-        "name": payload.get(
-            "name", payload.get("email")
-        ),  # Fallback to email if name not set
+        "name": payload.get("name", payload.get("email")),  # Fallback to email if name not set
         "email_verified": payload.get("email_verified", False),
         "username": payload.get("cognito:username", payload.get("email")),
     }
