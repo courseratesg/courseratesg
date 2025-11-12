@@ -163,7 +163,7 @@ resource "aws_ecs_task_definition" "main" {
           value = aws_cognito_user_pool.main.id
         },
         {
-          name  = "COGNITO_CLIENT_ID"
+          name  = "COGNITO_USER_POOL_CLIENT_ID"
           value = aws_cognito_user_pool_client.main.id
         },
         {
