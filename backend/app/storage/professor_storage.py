@@ -1,20 +1,41 @@
-"""Professor storage implementation."""
+"""Database storage for professors."""
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.professor import Professor as ProfessorModel
 from app.schemas.professor import Professor
-from app.storage.data_store import DataStore
 
 
 class ProfessorStorage:
-    """Storage for professor data extracted from reviews."""
+    """Database storage for professors."""
 
-    def __init__(self, data_store: DataStore):
+    def __init__(self, session: Session):
         """
-        Initialize storage.
+        Initialize storage with database session.
 
         Args:
-            data_store: DataStore instance for data access
+            session: SQLAlchemy database session
         """
-        self._data_store = data_store
+        self._session = session
+
+    def get(self, professor_id: int) -> Professor | None:
+        """
+        Get a professor by ID.
+
+        Args:
+            professor_id: Professor ID
+
+        Returns:
+            Professor or None if not found
+        """
+        stmt = select(ProfessorModel).where(ProfessorModel.id == professor_id)
+        db_professor = self._session.scalar(stmt)
+
+        if db_professor is None:
+            return None
+
+        return Professor.model_validate(db_professor)
 
     def list_professors(
         self,
@@ -34,32 +55,15 @@ class ProfessorStorage:
         Returns:
             List of professors with review counts and university names
         """
-        # Get all professors from data store
-        professors = self._data_store.get_all_professors()
-
-        # Get all universities to resolve names
-        universities = {u.id: u.name for u in self._data_store.get_all_universities()}
-
-        # Build professor response objects with university names
-        professor_responses = []
-        for professor in professors:
-            university_name = universities.get(professor.university_id, "Unknown")
-            # Create Professor response object
-            professor_response = Professor(
-                id=professor.id,
-                name=professor.name,
-                university_id=professor.university_id,
-                university=university_name,
-                review_count=professor.review_count,
-            )
-            professor_responses.append(professor_response)
+        stmt = select(ProfessorModel)
 
         # Filter by name if provided (case-insensitive partial match)
         if name:
-            professor_responses = [p for p in professor_responses if name.lower() in p.name.lower()]
+            stmt = stmt.where(func.lower(ProfessorModel.name).contains(name.lower()))
 
         # Sort by name for consistency
-        professor_responses.sort(key=lambda p: p.name.lower())
+        stmt = stmt.order_by(ProfessorModel.name).offset(skip).limit(limit)
 
-        # Apply pagination
-        return professor_responses[skip : skip + limit]
+        db_professors = self._session.scalars(stmt).all()
+
+        return [Professor.model_validate(p) for p in db_professors]

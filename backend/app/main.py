@@ -31,8 +31,52 @@ app.add_middleware(
 # Health check endpoint
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
+    """
+    Health check endpoint for ECS/ALB.
+
+    Returns basic status without checking database to ensure fast response.
+    For detailed health including database, use /health/detailed
+    """
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+
+@app.get("/health/detailed")
+def health_check_detailed():
+    """
+    Detailed health check including database connectivity.
+
+    This endpoint checks:
+    - Application status
+    - Database connection
+
+    Returns 200 if all checks pass, 503 if any check fails.
+    """
+    from fastapi import HTTPException
+
+    from app.api.v1.depends.storage import get_db_client
+
+    health_status = {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "checks": {"application": "ok", "database": "unknown"},
+    }
+
+    # Check database connection
+    try:
+        db_client = get_db_client()
+        is_healthy = db_client.health_check()
+        health_status["checks"]["database"] = "ok" if is_healthy else "error"
+
+        if not is_healthy:
+            health_status["status"] = "degraded"
+            raise HTTPException(status_code=503, detail=health_status)
+
+    except Exception as e:
+        health_status["checks"]["database"] = f"error: {str(e)}"
+        health_status["status"] = "error"
+        raise HTTPException(status_code=503, detail=health_status) from None
+
+    return health_status
 
 
 # Include API router

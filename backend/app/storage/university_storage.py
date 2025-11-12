@@ -1,20 +1,23 @@
-"""In-memory storage for universities."""
+"""Database storage for universities."""
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.university import University as UniversityModel
 from app.schemas.university import University
-from app.storage.data_store import DataStore
 
 
 class UniversityStorage:
-    """Storage for university data extracted from reviews."""
+    """Database storage for universities."""
 
-    def __init__(self, data_store: DataStore):
+    def __init__(self, session: Session):
         """
-        Initialize storage.
+        Initialize storage with database session.
 
         Args:
-            data_store: DataStore instance for data access
+            session: SQLAlchemy database session
         """
-        self._data_store = data_store
+        self._session = session
 
     def list_universities(
         self,
@@ -34,15 +37,15 @@ class UniversityStorage:
         Returns:
             List of universities with review counts
         """
-        # Get all universities from data store
-        universities = self._data_store.get_all_universities()
+        stmt = select(UniversityModel)
 
         # Filter by name if provided (case-insensitive partial match)
         if name:
-            universities = [u for u in universities if name.lower() in u.name.lower()]
+            stmt = stmt.where(func.lower(UniversityModel.name).contains(name.lower()))
 
         # Sort by name for consistency
-        universities.sort(key=lambda u: u.name.lower())
+        stmt = stmt.order_by(UniversityModel.name).offset(skip).limit(limit)
 
-        # Apply pagination
-        return universities[skip : skip + limit]
+        db_universities = self._session.scalars(stmt).all()
+
+        return [University.model_validate(u) for u in db_universities]

@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from app.api.v1.depends.auth import get_current_user, get_optional_user
+from app.api.v1.depends.auth import get_current_user
 from app.api.v1.depends.storage import get_review_storage
 from app.schemas import review as review_schema
 from app.storage.review_storage import ReviewStorage
@@ -102,7 +102,6 @@ def list_reviews(
     university: Annotated[str | None, Query(description="Filter by university")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
-    current_user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ) -> Any:
     """
     Retrieve reviews with optional filtering (no authentication required).
@@ -119,7 +118,6 @@ def list_reviews(
         skip: Number of records to skip
         limit: Maximum number of records to return
         review_storage: Review storage dependency
-        current_user: Current user (optional, if authenticated)
 
     Returns:
         List of reviews
