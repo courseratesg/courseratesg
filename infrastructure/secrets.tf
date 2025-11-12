@@ -16,7 +16,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
     password = var.db_password
     host     = aws_db_instance.main.address
     port     = aws_db_instance.main.port
-    dbname   = var.project_name
+    dbname   = var.db_name
     engine   = "postgres"
   })
 }
