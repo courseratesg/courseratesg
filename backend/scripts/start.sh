@@ -14,12 +14,11 @@ until poetry run python -c "
 from app.settings.rds_settings import RDSSettings
 from sqlalchemy import create_engine, text
 settings = RDSSettings()
-print(f"Database URL: {settings.database_url}")
 engine = create_engine(settings.database_url)
 with engine.connect() as conn:
     conn.execute(text('SELECT 1'))
 print('Database is ready!')
-" 2>/dev/null; do
+"; do
   retry_count=$((retry_count + 1))
   if [ $retry_count -ge $max_retries ]; then
     echo "ERROR: Database connection failed after $max_retries attempts"
