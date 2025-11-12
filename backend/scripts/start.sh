@@ -14,6 +14,7 @@ until poetry run python -c "
 from app.settings.rds_settings import RDSSettings
 from sqlalchemy import create_engine, text
 settings = RDSSettings()
+print(f"Database URL: {settings.database_url}")
 engine = create_engine(settings.database_url)
 with engine.connect() as conn:
     conn.execute(text('SELECT 1'))
