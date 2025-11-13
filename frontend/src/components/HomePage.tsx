@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
-import { Search, User, BookOpen, Star, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, User, BookOpen, Star, TrendingUp, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { cn } from './ui/utils';
 import { 
   searchProfessors, 
   searchCourses, 
   getProfessorStats, 
-  getCourseStats 
+  getCourseStats,
+  getProfessors,
+  getCourses
 } from '../services/api';
 import type { Course, Professor } from '../services/api';
 
@@ -141,6 +145,45 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
   const [professorResults, setProfessorResults] = useState<Professor[]>([]);
   const [courseResults, setCourseResults] = useState<Course[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  
+  // Dropdown states
+  const [professorList, setProfessorList] = useState<string[]>([]);
+  const [courseList, setCourseList] = useState<string[]>([]);
+  const [professorDropdownOpen, setProfessorDropdownOpen] = useState(false);
+  const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
+  const professorTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const courseTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const [popoverWidth, setPopoverWidth] = React.useState<number>(300);
+  
+  // Load professors and courses on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [professors, courses] = await Promise.all([
+          getProfessors(),
+          getCourses()
+        ]);
+        setProfessorList(professors);
+        setCourseList(courses);
+      } catch (error) {
+        console.error('Error loading professors/courses:', error);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Update popover width when dropdown opens
+  useEffect(() => {
+    if (professorDropdownOpen && professorTriggerRef.current) {
+      setPopoverWidth(professorTriggerRef.current.offsetWidth);
+    }
+  }, [professorDropdownOpen]);
+
+  useEffect(() => {
+    if (courseDropdownOpen && courseTriggerRef.current) {
+      setPopoverWidth(courseTriggerRef.current.offsetWidth);
+    }
+  }, [courseDropdownOpen]);
 
   const handleSearch = async () => {
     const trimmedQuery = query.trim();
@@ -160,12 +203,6 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
     }
 
     setSearchPerformed(true);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
   };
 
   return (
@@ -198,6 +235,8 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
                 setSearchType('professor');
                 setQuery('');
                 setSearchPerformed(false);
+                setProfessorDropdownOpen(false);
+                setCourseDropdownOpen(false);
               }}
               className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
                 searchType === 'professor' 
@@ -213,6 +252,8 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
                 setSearchType('course');
                 setQuery('');
                 setSearchPerformed(false);
+                setProfessorDropdownOpen(false);
+                setCourseDropdownOpen(false);
               }}
               className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md transition-colors ${
                 searchType === 'course' 
@@ -225,22 +266,149 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
             </button>
           </div>
 
-          {/* Search Input */}
+          {/* Search Input with Dropdown */}
           <div className="flex space-x-2">
-            <Input
-              placeholder={
-                searchType === 'professor' 
-                  ? 'Enter professor name (e.g., "Sarah Johnson" or "Johnson")' 
-                  : 'Enter exact course code (e.g., "CS101", "MATH220")'
-              }
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSearchPerformed(false);
-              }}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-            />
+            {searchType === 'professor' ? (
+              <Popover open={professorDropdownOpen} onOpenChange={setProfessorDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    ref={professorTriggerRef}
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={professorDropdownOpen}
+                    className="w-full justify-between flex-1"
+                  >
+                    <span className={cn("truncate", !query && "text-muted-foreground")}>
+                      {query || 'Search professor...'}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="p-0" 
+                  align="start"
+                  style={{ width: `${popoverWidth}px` }}
+                >
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search professor..." 
+                      value={query}
+                      onValueChange={(value: string) => {
+                        setQuery(value);
+                        setSearchPerformed(false);
+                      }}
+                      onKeyDown={(e: React.KeyboardEvent) => {
+                        if (e.key === 'Enter' && query) {
+                          setProfessorDropdownOpen(false);
+                          handleSearch();
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No professor found.</CommandEmpty>
+                      <CommandGroup>
+                        {professorList
+                          .filter((professor) =>
+                            professor.toLowerCase().includes(query.toLowerCase())
+                          )
+                          .map((professor) => (
+                            <CommandItem
+                              key={professor}
+                              value={professor}
+                              onSelect={(currentValue: string) => {
+                                setQuery(currentValue);
+                                setProfessorDropdownOpen(false);
+                                // Trigger search when a value is selected
+                                setTimeout(() => {
+                                  handleSearch();
+                                }, 0);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  query === professor ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {professor}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Popover open={courseDropdownOpen} onOpenChange={setCourseDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    ref={courseTriggerRef}
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={courseDropdownOpen}
+                    className="w-full justify-between flex-1"
+                  >
+                    <span className={cn("truncate", !query && "text-muted-foreground")}>
+                      {query || 'Search course...'}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="p-0" 
+                  align="start"
+                  style={{ width: `${popoverWidth}px` }}
+                >
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search course code..." 
+                      value={query}
+                      onValueChange={(value: string) => {
+                        setQuery(value);
+                        setSearchPerformed(false);
+                      }}
+                      onKeyDown={(e: React.KeyboardEvent) => {
+                        if (e.key === 'Enter' && query) {
+                          setCourseDropdownOpen(false);
+                          handleSearch();
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No course found.</CommandEmpty>
+                      <CommandGroup>
+                        {courseList
+                          .filter((course) =>
+                            course.toUpperCase().includes(query.toUpperCase())
+                          )
+                          .map((course) => (
+                            <CommandItem
+                              key={course}
+                              value={course}
+                              onSelect={(currentValue: string) => {
+                                setQuery(currentValue);
+                                setCourseDropdownOpen(false);
+                                // Trigger search when a value is selected
+                                setTimeout(() => {
+                                  handleSearch();
+                                }, 0);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  query === course ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {course}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
             <Button onClick={handleSearch}>
               <Search className="h-4 w-4 mr-2" />
               Search

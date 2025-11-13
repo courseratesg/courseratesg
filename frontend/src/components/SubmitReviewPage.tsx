@@ -88,7 +88,7 @@ export function SubmitReviewPage({ currentUser, onReviewSubmitted }: SubmitRevie
            form.overallRating > 0 &&
            form.difficultyRating > 0 &&
            form.workloadRating > 0 &&
-           form.reviewText.trim().length >= 20;
+           form.reviewText.trim().length > 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -527,7 +527,7 @@ export function SubmitReviewPage({ currentUser, onReviewSubmitted }: SubmitRevie
             <CardHeader>
               <CardTitle>Written Review</CardTitle>
               <CardDescription>
-                Share your detailed experience (minimum 20 characters)
+                Share your detailed experience
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -542,7 +542,7 @@ export function SubmitReviewPage({ currentUser, onReviewSubmitted }: SubmitRevie
                   required
                 />
                 <p className="text-sm text-gray-500">
-                  {form.reviewText.length}/20 characters minimum
+                  {form.reviewText.length} characters
                 </p>
               </div>
             </CardContent>

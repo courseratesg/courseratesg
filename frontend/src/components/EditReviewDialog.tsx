@@ -84,7 +84,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
            form.overallRating > 0 &&
            form.difficultyRating > 0 &&
            form.workloadRating > 0 &&
-           form.reviewText.trim().length >= 20;
+           form.reviewText.trim().length > 0;
   };
 
   const handleSave = async () => {
@@ -300,7 +300,7 @@ export function EditReviewDialog({ review, isOpen, onClose, onSave }: EditReview
               required
             />
             <p className="text-sm text-gray-500">
-              {form.reviewText.length}/20 characters minimum
+              {form.reviewText.length} characters
             </p>
           </div>
         </div>

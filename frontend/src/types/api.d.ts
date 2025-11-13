@@ -13,9 +13,38 @@ export interface paths {
         };
         /**
          * Health Check
-         * @description Health check endpoint.
+         * @description Health check endpoint for ECS/ALB.
+         *
+         *     Returns basic status without checking database to ensure fast response.
+         *     For detailed health including database, use /health/detailed
          */
         get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/detailed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Check Detailed
+         * @description Detailed health check including database connectivity.
+         *
+         *     This endpoint checks:
+         *     - Application status
+         *     - Database connection
+         *
+         *     Returns 200 if all checks pass, 503 if any check fails.
+         */
+        get: operations["health_check_detailed_health_detailed_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33,7 +62,7 @@ export interface paths {
         };
         /**
          * List Reviews
-         * @description Retrieve reviews with optional filtering.
+         * @description Retrieve reviews with optional filtering (no authentication required).
          *
          *     Query parameters:
          *         - professor_name: Get reviews for a specific professor
@@ -55,11 +84,12 @@ export interface paths {
         put?: never;
         /**
          * Create Review
-         * @description Create a new review.
+         * @description Create a new review (requires authentication).
          *
          *     Args:
          *         review_in: Review creation data
          *         review_storage: Review storage dependency
+         *         current_user: Current authenticated user
          *
          *     Returns:
          *         Created review
@@ -80,16 +110,16 @@ export interface paths {
         };
         /**
          * Get My Reviews
-         * @description Get current user's reviews.
-         *
-         *     Reserved for auth branch - returns empty list for now.
+         * @description Get current user's reviews (requires authentication).
          *
          *     Args:
          *         skip: Number of records to skip
          *         limit: Maximum number of records to return
+         *         review_storage: Review storage dependency
+         *         current_user: Current authenticated user
          *
          *     Returns:
-         *         List of user's reviews (empty for now)
+         *         List of user's reviews
          */
         get: operations["get_my_reviews_api_v1_reviews_me_get"];
         put?: never;
@@ -157,31 +187,33 @@ export interface paths {
         get: operations["get_review_api_v1_reviews__review_id__get"];
         /**
          * Update Review
-         * @description Update a review.
+         * @description Update a review (requires authentication, only owner can update).
          *
          *     Args:
          *         review_id: Review ID
          *         review_in: Review update data
          *         review_storage: Review storage dependency
+         *         current_user: Current authenticated user
          *
          *     Returns:
          *         Updated review
          *
          *     Raises:
-         *         HTTPException: If review not found
+         *         HTTPException: If review not found or user is not the owner
          */
         put: operations["update_review_api_v1_reviews__review_id__put"];
         post?: never;
         /**
          * Delete Review
-         * @description Delete a review.
+         * @description Delete a review (requires authentication, only owner can delete).
          *
          *     Args:
          *         review_id: Review ID
          *         review_storage: Review storage dependency
+         *         current_user: Current authenticated user
          *
          *     Raises:
-         *         HTTPException: If review not found
+         *         HTTPException: If review not found or user is not the owner
          */
         delete: operations["delete_review_api_v1_reviews__review_id__delete"];
         options?: never;
@@ -233,7 +265,7 @@ export interface paths {
          *
          *     Args:
          *         professor_id: Professor ID
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
          *
          *     Returns:
          *         Professor details
@@ -263,7 +295,8 @@ export interface paths {
          *
          *     Args:
          *         professor_id: Professor ID
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
+         *         review_storage: Review storage dependency
          *         skip: Number of records to skip
          *         limit: Maximum number of records to return
          *
@@ -295,7 +328,8 @@ export interface paths {
          *
          *     Args:
          *         professor_id: Professor ID
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
+         *         review_storage: Review storage dependency
          *
          *     Returns:
          *         Professor statistics including average ratings and review count
@@ -358,7 +392,7 @@ export interface paths {
          *
          *     Args:
          *         course_id: Course ID
-         *         data_store: Data store dependency
+         *         course_storage: Course storage dependency
          *
          *     Returns:
          *         Course details
@@ -388,7 +422,8 @@ export interface paths {
          *
          *     Args:
          *         course_id: Course ID
-         *         data_store: Data store dependency
+         *         course_storage: Course storage dependency
+         *         review_storage: Review storage dependency
          *         skip: Number of records to skip
          *         limit: Maximum number of records to return
          *
@@ -420,7 +455,8 @@ export interface paths {
          *
          *     Args:
          *         course_id: Course ID
-         *         data_store: Data store dependency
+         *         course_storage: Course storage dependency
+         *         review_storage: Review storage dependency
          *
          *     Returns:
          *         Course statistics including average ratings and review count
@@ -450,7 +486,9 @@ export interface paths {
          *
          *     Args:
          *         course_id: Course ID
-         *         data_store: Data store dependency
+         *         course_storage: Course storage dependency
+         *         professor_storage: Professor storage dependency
+         *         review_storage: Review storage dependency
          *
          *     Returns:
          *         List of professors who taught this course
@@ -513,7 +551,7 @@ export interface paths {
          *
          *     Args:
          *         q: Search query for professor name
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
          *
          *     Returns:
          *         List of professor names that match the query
@@ -543,7 +581,7 @@ export interface paths {
          *     Args:
          *         q: Search query for course code
          *         exact: Whether to use exact match (default: true)
-         *         data_store: Data store dependency
+         *         course_storage: Course storage dependency
          *
          *     Returns:
          *         List of courses that match the query
@@ -572,7 +610,8 @@ export interface paths {
          *
          *     Args:
          *         q: Search query
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
+         *         course_storage: Course storage dependency
          *
          *     Returns:
          *         Dictionary with professors and courses results
@@ -600,7 +639,10 @@ export interface paths {
          *     Returns total counts of professors, courses, universities, and reviews.
          *
          *     Args:
-         *         data_store: Data store dependency
+         *         professor_storage: Professor storage dependency
+         *         course_storage: Course storage dependency
+         *         university_storage: University storage dependency
+         *         review_storage: Review storage dependency
          *
          *     Returns:
          *         Dictionary with search statistics
@@ -738,6 +780,11 @@ export interface components {
             /** Id */
             id: number;
             /**
+             * User Id
+             * @description User ID (Cognito sub)
+             */
+            user_id?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -789,10 +836,10 @@ export interface components {
              */
             course_code: string;
             /**
-             * University
+             * University Name
              * @description University name (e.g., 'NUS')
              */
-            university: string;
+            university_name: string;
             /**
              * Professor Name
              * @description Professor name
@@ -859,6 +906,26 @@ export interface components {
 export type $defs = Record<string, never>;
 export interface operations {
     health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    health_check_detailed_health_detailed_get: {
         parameters: {
             query?: never;
             header?: never;
