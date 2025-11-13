@@ -5,9 +5,15 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.v1.depends.auth import get_current_user
-from app.api.v1.depends.storage import get_review_storage
+from app.api.v1.depends.storage import (
+    get_course_storage,
+    get_review_storage,
+    get_university_storage,
+)
 from app.schemas import review as review_schema
+from app.storage.course_storage import CourseStorage
 from app.storage.review_storage import ReviewStorage
+from app.storage.university_storage import UniversityStorage
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -16,6 +22,8 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 def create_review(
     review_in: review_schema.ReviewCreate,
     review_storage: Annotated[ReviewStorage, Depends(get_review_storage)],
+    course_storage: Annotated[CourseStorage, Depends(get_course_storage)],
+    university_storage: Annotated[UniversityStorage, Depends(get_university_storage)],
     current_user: Annotated[dict, Depends(get_current_user)],
 ) -> Any:
     """
@@ -24,11 +32,23 @@ def create_review(
     Args:
         review_in: Review creation data
         review_storage: Review storage dependency
+        course_storage: Course storage dependency
+        university_storage: University storage dependency
         current_user: Current authenticated user
 
     Returns:
         Created review
     """
+    # HACK: Auto-create course and university if they don't exist
+    university = university_storage.get_or_create(name=review_in.university)
+
+    course_storage.get_or_create(
+        code=review_in.course_code,
+        name=review_in.course_code,  # Use code as name since we don't have it
+        university_id=university.id,
+        university_name=university.name,
+    )
+
     # Create review with user_id from authenticated user
     review = review_storage.create(review_in, user_id=current_user["user_id"])
     return review

@@ -19,6 +19,60 @@ class UniversityStorage:
         """
         self._session = session
 
+    def get_by_name(self, name: str) -> University | None:
+        """
+        Get a university by exact name (case-insensitive).
+
+        Args:
+            name: University name
+
+        Returns:
+            University or None if not found
+        """
+        stmt = select(UniversityModel).where(func.lower(UniversityModel.name) == name.lower())
+        db_university = self._session.scalar(stmt)
+
+        if db_university is None:
+            return None
+
+        return University.model_validate(db_university)
+
+    def create(self, name: str) -> University:
+        """
+        Create a new university.
+
+        Args:
+            name: University name
+
+        Returns:
+            Created university
+        """
+        db_university = UniversityModel(
+            name=name,
+            review_count=0,
+        )
+
+        self._session.add(db_university)
+        self._session.flush()
+        self._session.refresh(db_university)
+
+        return University.model_validate(db_university)
+
+    def get_or_create(self, name: str) -> University:
+        """
+        Get a university by name, or create it if it doesn't exist.
+
+        Args:
+            name: University name
+
+        Returns:
+            Existing or newly created university
+        """
+        university = self.get_by_name(name)
+        if university:
+            return university
+        return self.create(name)
+
     def list_universities(
         self,
         *,
