@@ -222,7 +222,7 @@ function mapCreatePayloadToApi(payload: CreateReviewPayload): ApiReviewCreate {
     semester: payload.semester ?? 'Semester 1',
     year: year ?? new Date().getFullYear(),
     course_code: payload.courseCode.trim().toUpperCase(),
-    university: payload.universityName.trim(),
+    university_name: payload.universityName.trim(),
     professor_name: payload.professorName ? payload.professorName.trim() : null,
   };
 }
