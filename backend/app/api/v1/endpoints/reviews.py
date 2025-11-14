@@ -45,15 +45,18 @@ def create_review(
     # Use provided course_name if available, otherwise fallback to course_code
     course_name = review_in.course_name if review_in.course_name else review_in.course_code
 
-    course_storage.get_or_create(
+    # Get or create course, and use its name for the review
+    course = course_storage.get_or_create(
         code=review_in.course_code,
         name=course_name,
         university_id=university.id,
         university_name=university.name,
     )
 
-    # Create review with user_id from authenticated user
-    review = review_storage.create(review_in, user_id=current_user["user_id"])
+    # Create review with user_id from authenticated user and course name from course table
+    review = review_storage.create(
+        review_in, user_id=current_user["user_id"], course_name=course.name
+    )
     return review
 
 

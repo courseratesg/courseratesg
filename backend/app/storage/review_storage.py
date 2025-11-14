@@ -21,17 +21,23 @@ class ReviewStorage:
         """
         self._session = session
 
-    def create(self, review_in: ReviewCreate, user_id: str | None = None) -> Review:
+    def create(
+        self, review_in: ReviewCreate, user_id: str | None = None, course_name: str | None = None
+    ) -> Review:
         """
         Create a new review.
 
         Args:
             review_in: Review creation data
             user_id: User ID (Cognito sub)
+            course_name: Course name (overrides review_in.course_name if provided)
 
         Returns:
             Created review
         """
+        # Use provided course_name or fall back to review_in.course_name
+        final_course_name = course_name if course_name is not None else review_in.course_name
+
         # Convert schema to model
         db_review = ReviewModel(
             user_id=user_id,
@@ -42,6 +48,7 @@ class ReviewStorage:
             semester=review_in.semester,
             year=review_in.year,
             course_code=review_in.course_code,
+            course_name=final_course_name or review_in.course_code,  # Fall back to course_code
             university_name=review_in.university,
             professor_name=review_in.professor_name,
             created_at=datetime.utcnow(),
