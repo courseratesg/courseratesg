@@ -28,7 +28,8 @@ class ReviewBase(BaseModel):
 class ReviewCreate(ReviewBase):
     """Schema for creating a review."""
 
-    pass
+    # Optional course name for populating course table
+    course_name: str | None = Field(None, description="Course name (e.g., 'Cloud Computing')")
 
 
 class ReviewUpdate(BaseModel):
