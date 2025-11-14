@@ -31,6 +31,7 @@ class Review(Base, TimestampMixin):
     # Denormalized fields for easier querying (API-first design)
     # In a fully normalized design, these would be foreign keys
     course_code: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    course_name: Mapped[str] = mapped_column(String(255), nullable=False)
     university_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     professor_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 

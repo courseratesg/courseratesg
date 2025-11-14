@@ -17,6 +17,12 @@ class ReviewBase(BaseModel):
 
     # For API-only branch: use names/codes instead of IDs
     course_code: str = Field(..., description="Course code (e.g., 'CS5224')")
+    course_name: str | None = Field(
+        None,
+        description=(
+            "Course name (e.g., 'Cloud Computing'). Optional when creating, will be populated from course table."
+        ),
+    )
     university: str = Field(
         ...,
         validation_alias="university_name",  # Allow reading from DB model's university_name field
@@ -28,8 +34,7 @@ class ReviewBase(BaseModel):
 class ReviewCreate(ReviewBase):
     """Schema for creating a review."""
 
-    # Optional course name for populating course table
-    course_name: str | None = Field(None, description="Course name (e.g., 'Cloud Computing')")
+    pass
 
 
 class ReviewUpdate(BaseModel):
