@@ -164,7 +164,7 @@ SELECT * FROM universities; # Query data
 ```bash
 # Method 1: Using seed script (recommended)
 poetry run python scripts/seed_database.py
-# Answer 'y' when prompted
+# Answer 'y' when prompted. It will reset auto-increment ID.
 
 # Method 2: Drop and recreate
 docker-compose down -v

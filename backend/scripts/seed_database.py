@@ -8,6 +8,7 @@ from pathlib import Path
 # Add parent directory to path to import app modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.rds_client import RDSClient
@@ -40,14 +41,15 @@ def seed_database():
                 print("❌ Seeding cancelled")
                 return
 
-            # Clear existing data
+            # Clear existing data and reset ID sequences
             print("🗑️  Clearing existing data...")
-            session.query(Review).delete()
-            session.query(Course).delete()
-            session.query(Professor).delete()
-            session.query(University).delete()
+            # Use TRUNCATE with RESTART IDENTITY to reset auto-increment IDs
+            # CASCADE ensures dependent rows are also deleted
+            session.execute(
+                text("TRUNCATE TABLE reviews, courses, professors, universities RESTART IDENTITY CASCADE")
+            )
             session.commit()
-            print("✅ Existing data cleared")
+            print("✅ Existing data cleared and IDs reset")
 
         # Create sample universities
         print("\n📚 Creating universities...")
