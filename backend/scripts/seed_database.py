@@ -45,9 +45,7 @@ def seed_database():
             print("🗑️  Clearing existing data...")
             # Use TRUNCATE with RESTART IDENTITY to reset auto-increment IDs
             # CASCADE ensures dependent rows are also deleted
-            session.execute(
-                text("TRUNCATE TABLE reviews, courses, professors, universities RESTART IDENTITY CASCADE")
-            )
+            session.execute(text("TRUNCATE TABLE reviews, courses, professors, universities RESTART IDENTITY CASCADE"))
             session.commit()
             print("✅ Existing data cleared and IDs reset")
 
