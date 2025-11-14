@@ -420,14 +420,11 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
             </Button>
           </div>
 
-          <div className="text-sm text-gray-500">
-            {searchType === 'professor' && (
-              <p>💡 Professor search uses fuzzy matching - try partial names or variations</p>
-            )}
-            {searchType === 'course' && (
+          {searchType === 'course' && (
+            <div className="text-sm text-gray-500">
               <p>💡 Course search requires exact course code matching</p>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -490,13 +487,13 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
               <div>
                 <p className="font-medium text-gray-700">Professor Search</p>
                 <p className="text-sm text-gray-600">
-                  Use fuzzy matching to find professors by name. 
+                  Enter names (or partial names) to find professors across universities.
                 </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">Course Search</p>
                 <p className="text-sm text-gray-600">
-                  Enter the exact course code to find all sections across universities.
+                  Enter the exact course code to find courses across universities.
                 </p>
               </div>
             </CardContent>
