@@ -7,6 +7,7 @@ class CourseBase(BaseModel):
     """Base course schema with shared fields."""
 
     code: str = Field(..., min_length=1, description="Course code")
+    name: str = Field(..., min_length=1, description="Course name")
     university_id: int = Field(..., description="University ID offering this course")
 
 

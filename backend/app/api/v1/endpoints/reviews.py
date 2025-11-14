@@ -42,9 +42,12 @@ def create_review(
     # HACK: Auto-create course and university if they don't exist
     university = university_storage.get_or_create(name=review_in.university)
 
+    # Use provided course_name if available, otherwise fallback to course_code
+    course_name = review_in.course_name if review_in.course_name else review_in.course_code
+
     course_storage.get_or_create(
         code=review_in.course_code,
-        name=review_in.course_code,  # Use code as name since we don't have it
+        name=course_name,
         university_id=university.id,
         university_name=university.name,
     )
