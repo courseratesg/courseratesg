@@ -24,10 +24,19 @@ def upgrade() -> None:
     # Step 1: Add column as nullable first
     op.add_column('reviews', sa.Column('course_name', sa.String(length=255), nullable=True))
 
-    # Step 2: Populate existing rows with course_code as fallback
+    # Step 2: Populate existing rows from course table where possible
+    op.execute("""
+        UPDATE reviews
+        SET course_name = courses.name
+        FROM courses
+        WHERE LOWER(reviews.course_code) = LOWER(courses.code)
+          AND LOWER(reviews.university_name) = LOWER(courses.university)
+    """)
+
+    # Step 3: For remaining rows without matching course, use course_code as fallback
     op.execute("UPDATE reviews SET course_name = course_code WHERE course_name IS NULL")
 
-    # Step 3: Make column NOT NULL now that all rows have values
+    # Step 4: Make column NOT NULL now that all rows have values
     op.alter_column('reviews', 'course_name', nullable=False)
     # ### end Alembic commands ###
 
