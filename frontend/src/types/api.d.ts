@@ -89,6 +89,8 @@ export interface paths {
          *     Args:
          *         review_in: Review creation data
          *         review_storage: Review storage dependency
+         *         course_storage: Course storage dependency
+         *         university_storage: University storage dependency
          *         current_user: Current authenticated user
          *
          *     Returns:
@@ -671,6 +673,11 @@ export interface components {
              */
             code: string;
             /**
+             * Name
+             * @description Course name
+             */
+            name: string;
+            /**
              * University Id
              * @description University ID offering this course
              */
@@ -845,6 +852,11 @@ export interface components {
              * @description Professor name
              */
             professor_name?: string | null;
+            /**
+             * Course Name
+             * @description Course name (e.g., 'Cloud Computing')
+             */
+            course_name?: string | null;
         };
         /**
          * ReviewUpdate

@@ -164,7 +164,12 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
           getCourses()
         ]);
         setProfessorList(professors);
-        setCourseList(courses);
+        const uniqueCourseCodes = Array.from(
+          new Set(
+            courses.map((course) => course.trim().toUpperCase())
+          )
+        ).sort();
+        setCourseList(uniqueCourseCodes);
       } catch (error) {
         console.error('Error loading professors/courses:', error);
       }
