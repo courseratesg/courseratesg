@@ -1,6 +1,6 @@
 """Review database model."""
 
-from sqlalchemy import Float, Index, Integer, String, Text
+from sqlalchemy import Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -16,15 +16,17 @@ class Review(Base, TimestampMixin):
     # User information (for incognito support)
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
-    # Rating fields
-    overall_rating: Mapped[float] = mapped_column(Float, nullable=False)
-    difficulty_rating: Mapped[float] = mapped_column(Float, nullable=False)
-    workload_rating: Mapped[float] = mapped_column(Float, nullable=False)
+    # Rating fields (0-5 scale)
+    overall_rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    difficulty_rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    workload_rating: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Review content
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Semester information
+    # Valid values: "Semester 1", "Semester 2", "Special Term 1", "Special Term 2",
+    # "Summer Session", "Winter Session"
     semester: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 

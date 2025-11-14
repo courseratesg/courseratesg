@@ -1,18 +1,29 @@
 """Review schemas."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# Valid semester values
+SemesterType = Literal[
+    "Semester 1",
+    "Semester 2",
+    "Special Term 1",
+    "Special Term 2",
+    "Summer Session",
+    "Winter Session",
+]
 
 
 class ReviewBase(BaseModel):
     """Base review schema."""
 
-    overall_rating: float = Field(..., ge=1.0, le=5.0, description="Overall rating (1-5)")
-    difficulty_rating: float = Field(..., ge=1.0, le=5.0, description="Difficulty rating (1-5)")
-    workload_rating: float = Field(..., ge=1.0, le=5.0, description="Workload rating (1-5)")
+    overall_rating: int = Field(..., ge=0, le=5, description="Overall rating (0-5)")
+    difficulty_rating: int = Field(..., ge=0, le=5, description="Difficulty rating (0-5)")
+    workload_rating: int = Field(..., ge=0, le=5, description="Workload rating (0-5)")
     comment: str | None = Field(None, max_length=5000, description="Review comment")
-    semester: str = Field(..., description="Semester (e.g., 'AY2024/25 Sem 1')")
+    semester: SemesterType = Field(..., description="Semester")
     year: int = Field(..., ge=2000, le=2100, description="Year")
 
     # For API-only branch: use names/codes instead of IDs
@@ -40,11 +51,11 @@ class ReviewCreate(ReviewBase):
 class ReviewUpdate(BaseModel):
     """Schema for updating a review."""
 
-    overall_rating: float | None = Field(None, ge=1.0, le=5.0)
-    difficulty_rating: float | None = Field(None, ge=1.0, le=5.0)
-    workload_rating: float | None = Field(None, ge=1.0, le=5.0)
+    overall_rating: int | None = Field(None, ge=0, le=5)
+    difficulty_rating: int | None = Field(None, ge=0, le=5)
+    workload_rating: int | None = Field(None, ge=0, le=5)
     comment: str | None = Field(None, max_length=5000)
-    semester: str | None = None
+    semester: SemesterType | None = None
     year: int | None = Field(None, ge=2000, le=2100)
     professor_name: str | None = None
 
