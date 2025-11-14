@@ -21,9 +21,7 @@ class ReviewStorage:
         """
         self._session = session
 
-    def create(
-        self, review_in: ReviewCreate, user_id: str | None = None, course_name: str | None = None
-    ) -> Review:
+    def create(self, review_in: ReviewCreate, user_id: str | None = None, course_name: str | None = None) -> Review:
         """
         Create a new review.
 

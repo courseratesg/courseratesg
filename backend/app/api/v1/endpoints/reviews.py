@@ -54,9 +54,7 @@ def create_review(
     )
 
     # Create review with user_id from authenticated user and course name from course table
-    review = review_storage.create(
-        review_in, user_id=current_user["user_id"], course_name=course.name
-    )
+    review = review_storage.create(review_in, user_id=current_user["user_id"], course_name=course.name)
     return review
 
 

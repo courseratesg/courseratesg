@@ -20,8 +20,7 @@ class ReviewBase(BaseModel):
     course_name: str | None = Field(
         None,
         description=(
-            "Course name (e.g., 'Cloud Computing'). "
-            "Optional when creating, will be populated from course table."
+            "Course name (e.g., 'Cloud Computing'). " "Optional when creating, will be populated from course table."
         ),
     )
     university: str = Field(
