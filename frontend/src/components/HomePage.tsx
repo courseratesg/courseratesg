@@ -228,9 +228,6 @@ export function HomePage({ onProfessorClick, onCourseClick, currentUser, onNavig
             <Search className="h-5 w-5" />
             <span>Search Database</span>
           </CardTitle>
-          <CardDescription>
-            Find professors with fuzzy search or courses with exact course codes
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search Type Toggle */}
