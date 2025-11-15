@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.models.review import Review as ReviewModel
@@ -20,6 +20,31 @@ class ReviewStorage:
             session: SQLAlchemy database session
         """
         self._session = session
+
+    @staticmethod
+    def _get_semester_order():
+        """
+        Get semester sort order for descending sorting.
+
+        Semester order (ascending):
+        1. Semester 1
+        2. Special Term 1
+        3. Winter Session
+        4. Semester 2
+        5. Special Term 2
+        6. Summer Session
+
+        Returns descending order (6 to 1) for sorting.
+        """
+        return case(
+            (ReviewModel.semester == "Summer Session", 6),
+            (ReviewModel.semester == "Special Term 2", 5),
+            (ReviewModel.semester == "Semester 2", 4),
+            (ReviewModel.semester == "Winter Session", 3),
+            (ReviewModel.semester == "Special Term 1", 2),
+            (ReviewModel.semester == "Semester 1", 1),
+            else_=0,  # Unknown semesters sort to the end
+        )
 
     def create(self, review_in: ReviewCreate, user_id: str | None = None, course_name: str | None = None) -> Review:
         """
@@ -87,9 +112,18 @@ class ReviewStorage:
             limit: Maximum number of reviews to return
 
         Returns:
-            List of reviews
+            List of reviews ordered by year (desc), semester (desc), created_at (desc)
         """
-        stmt = select(ReviewModel).order_by(ReviewModel.created_at.desc()).offset(skip).limit(limit)
+        stmt = (
+            select(ReviewModel)
+            .order_by(
+                ReviewModel.year.desc(),
+                self._get_semester_order().desc(),
+                ReviewModel.created_at.desc(),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
         db_reviews = self._session.scalars(stmt).all()
 
         return [Review.model_validate(r) for r in db_reviews]
@@ -167,7 +201,7 @@ class ReviewStorage:
             limit: Maximum number of reviews to return (pagination)
 
         Returns:
-            List of filtered reviews with pagination applied
+            List of filtered reviews ordered by year (desc), semester (desc), created_at (desc)
         """
         stmt = select(ReviewModel)
 
@@ -185,8 +219,16 @@ class ReviewStorage:
             # Filter by user_id (Cognito sub) for "my reviews"
             stmt = stmt.where(ReviewModel.user_id == user_id)
 
-        # Order by most recent first
-        stmt = stmt.order_by(ReviewModel.created_at.desc()).offset(skip).limit(limit)
+        # Order by year (desc), semester (desc), created_at (desc)
+        stmt = (
+            stmt.order_by(
+                ReviewModel.year.desc(),
+                self._get_semester_order().desc(),
+                ReviewModel.created_at.desc(),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
 
         db_reviews = self._session.scalars(stmt).all()
 
