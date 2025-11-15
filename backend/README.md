@@ -429,8 +429,6 @@ curl "http://localhost:8080/api/v1/universities/?name=NUS"
 
 ### Query Parameter Filtering
 
-<!-- TODO: fuzzy search -->
-
 The API supports flexible filtering through query parameters:
 
 - Filter by professor name
@@ -515,7 +513,6 @@ backend/
 ├── alembic/             # Database migrations
 │   └── versions/        # Migration files
 ├── scripts/             # Utility scripts (seed, etc.)
-├── tests/               # Test suite
 ├── docker-compose.yml   # Local PostgreSQL setup
 └── Dockerfile           # Production container image
 ```
